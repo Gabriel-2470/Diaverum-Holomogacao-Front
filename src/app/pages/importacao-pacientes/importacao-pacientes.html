@@ -1,0 +1,1052 @@
+<div class="page-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1>Importação da Rotina do Paciente</h1>
+
+        <div class="estatisticas">
+          <div class="stat-item stat-enviado">
+            <div class="stat-dot"></div>
+            <span class="stat-numero">{{ estatisticas.enviados }}</span>
+            <span class="stat-label">enviados</span>
+          </div>
+
+          <div class="stat-item stat-pendente">
+            <div class="stat-dot"></div>
+            <span class="stat-numero">{{ estatisticas.pendentes }}</span>
+            <span class="stat-label">pendentes</span>
+          </div>
+
+          <div class="stat-item stat-erro">
+            <div class="stat-dot"></div>
+            <span class="stat-numero">{{ estatisticas.erros }}</span>
+            <span class="stat-label">erros</span>
+          </div>
+
+          <div class="stat-total">
+            <span class="stat-label">total:</span>
+            <span class="stat-numero">{{ estatisticas.total }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button
+          class="btn btn-transferencia"
+          (click)="abrirTransferencia()"
+          [disabled]="transferindo"
+          [class.loading]="transferindo"
+        >
+          @if (transferindo) {
+            <div class="spinner-transferencia"></div>
+            <span>TRANSFERINDO {{ progressoTransferencia.atual }}/{{ progressoTransferencia.total }}...</span>
+          } @else {
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+            <span>TRANSFERÊNCIA</span>
+          }
+        </button>
+        <label class="btn btn-upload">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          IMPORTAR ARQUIVO
+          <input type="file" (change)="onFileSelected($event)" accept=".xls,.xlsx,.csv" hidden />
+        </label>
+      </div>
+    </div>
+
+    <!-- Arquivo selecionado -->
+    @if (nomeArquivo) {
+    <div class="arquivo-selecionado">
+      <div class="arquivo-info">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+          <polyline points="13 2 13 9 20 9"></polyline>
+        </svg>
+        <span>{{ nomeArquivo }}</span>
+      </div>
+      <button class="btn-remover-arquivo" (click)="removerArquivo()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    }
+  </div>
+
+  <!-- Barra de ferramentas -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="campo-busca">
+        <svg
+          class="icone-busca"
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input
+          type="text"
+          [(ngModel)]="termoBusca"
+          (ngModelChange)="onBuscaChange()"
+          placeholder="Pesquisar..."
+          class="input-busca"
+        />
+      </div>
+    </div>
+
+    @if (quantidadeSelecionados > 0) {
+    <div class="toolbar-right">
+      <button
+        class="btn-excluir-selecionados"
+        (click)="excluirPacientesSelecionados()"
+        [disabled]="excluindoEmMassa"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path
+            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+          ></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        @if (excluindoEmMassa) {
+        <span>Excluindo {{ progressoExclusao.atual }}/{{ progressoExclusao.total }}...</span>
+        } @else {
+        <span
+          >Excluir {{ quantidadeSelecionados }} paciente{{
+            quantidadeSelecionados > 1 ? 's' : ''
+          }}</span
+        >
+        }
+      </button>
+    </div>
+    }
+  </div>
+
+  <!-- Lista de Pacientes -->
+  <div class="content-area">
+    <div class="tabela-header">
+      <div class="col-checkbox">
+        <input
+          type="checkbox"
+          class="checkbox-master"
+          [checked]="todosSelecionados"
+          [indeterminate]="quantidadeSelecionados > 0 && !todosSelecionados"
+          (change)="toggleTodosPacientes()"
+          title="Selecionar/Desmarcar Todos"
+        />
+      </div>
+      <div class="col-status"></div>
+      <div class="col-data">DATA</div>
+      <div class="col-paciente">PACIENTE</div>
+      <div class="col-cpf">CPF</div>
+      <div class="col-diabetes">DIABETES</div>
+      <div class="col-tratamento">TRATAMENTO</div>
+      <div class="col-horario">HORÁRIO/COLETA</div>
+      <div class="col-acoes"></div>
+    </div>
+
+    <div class="pacientes-lista">
+      @for (paciente of pacientesFiltrados; track paciente.id) {
+      <div
+        class="paciente-card"
+        [class.expandido]="paciente.expandido"
+        [class.selecionado]="isPacienteSelecionado(paciente.id)"
+      >
+        <div class="paciente-row">
+          <div class="col-checkbox">
+            <input
+              type="checkbox"
+              class="checkbox-paciente"
+              [checked]="isPacienteSelecionado(paciente.id)"
+              [disabled]="paciente.status === 'enviado'"
+              [title]="paciente.status === 'enviado' ? 'Paciente já enviado - não pode ser selecionado' : 'Selecionar paciente'"
+              (change)="togglePacienteSelecionado(paciente.id)"
+            />
+          </div>
+
+          <div class="col-status">
+            <div class="status-dot" [class]="'status-' + paciente.status"></div>
+          </div>
+
+          <div class="col-data">{{ paciente.data }}</div>
+
+          <div class="col-paciente">{{ paciente.nome }}</div>
+
+          <div class="col-cpf">{{ paciente.cpf }}</div>
+
+          <div class="col-diabetes">
+            <span class="badge-diabetes" [class.tem-diabetes]="paciente.diabetes">
+              {{ paciente.diabetes ? 'Sim' : 'Não' }}
+            </span>
+          </div>
+
+          <div class="col-tratamento">{{ paciente.tratamento }}</div>
+
+          <div class="col-horario">{{ paciente.horarioColeta }}</div>
+
+          <div class="col-acoes">
+            <button class="btn-toggle" (click)="togglePaciente(paciente)">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <div class="menu-container">
+              <button class="btn-menu" (click)="toggleMenu(paciente, $event)">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </button>
+
+              @if (paciente.menuAberto) {
+              <div class="menu-dropdown" (click)="$event.stopPropagation()">
+                <button
+                  class="menu-item"
+                  (click)="editarPaciente(paciente)"
+                  [disabled]="paciente.podeEditar === false"
+                  [class.disabled]="paciente.podeEditar === false"
+                  [title]="
+                    paciente.podeEditar === false
+                      ? 'Paciente já enviado - edição bloqueada'
+                      : 'Editar paciente'
+                  "
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                  Editar
+                </button>
+                <button
+                  class="menu-item menu-item-danger"
+                  (click)="excluirPaciente(paciente)"
+                  [disabled]="paciente.podeEditar === false"
+                  [class.disabled]="paciente.podeEditar === false"
+                  [title]="
+                    paciente.podeEditar === false
+                      ? 'Paciente já enviado - exclusão bloqueada'
+                      : 'Excluir paciente'
+                  "
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path
+                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    ></path>
+                  </svg>
+                  Excluir
+                </button>
+              </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Área expandida -->
+        @if (paciente.expandido) {
+        <div class="paciente-detalhes">
+          <div class="detalhes-header">
+            <h3>Exames do Paciente</h3>
+            <div class="detalhes-header-right">
+              <span class="badge-count">{{ paciente.exames?.length || 0 }} exame(s)</span>
+              <button
+                class="btn-editar-exames"
+                (click)="editarExamesPaciente(paciente)"
+                [title]="
+                  paciente.podeEditar === false
+                    ? 'Paciente já enviado - edição bloqueada'
+                    : 'Editar exames'
+                "
+                [disabled]="paciente.podeEditar === false"
+                [class.disabled]="paciente.podeEditar === false"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          @if (paciente.exames && paciente.exames.length > 0) {
+          <div class="tabela-exames">
+            <div class="tabela-exames-header">
+              <div class="col-exame-codigo">CÓDIGO</div>
+              <div class="col-exame-nome">EXAME</div>
+              <div class="col-exame-amostras">AMOSTRAS</div>
+              <div class="col-exame-material">MATERIAL</div>
+              <div class="col-exame-acoes"></div>
+            </div>
+            <div class="tabela-exames-body">
+              @for (exame of paciente.exames; track exame.iD_EXAME) {
+              <div class="exame-linha">
+                <div class="col-exame-codigo">{{ exame.cD_EXAME_DB }}</div>
+                <div class="col-exame-nome">
+                  {{ exame.desC_EXAME || exame.cD_EXAME_DB || 'Exame ' + exame.iD_EXAME }}
+                </div>
+                <div class="col-exame-amostras">1</div>
+                <div class="col-exame-material">{{ exame.material || 'Soro' }}</div>
+                <div class="col-exame-acoes">
+                  <button
+                    class="btn-remover-exame"
+                    (click)="removerExame(paciente, $index)"
+                    [disabled]="paciente.podeEditar === false"
+                    [class.disabled]="paciente.podeEditar === false"
+                    [title]="
+                      paciente.podeEditar === false
+                        ? 'Paciente já enviado - remoção bloqueada'
+                        : 'Remover exame'
+                    "
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+          } @else {
+          <div class="vazio-exames">
+            <p>Nenhum exame atribuído a este paciente</p>
+          </div>
+          }
+
+          <div class="detalhes-acoes">
+            <button class="btn btn-cancelar" (click)="togglePaciente(paciente)">Fechar</button>
+          </div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+
+    <!-- Paginação -->
+    @if (totalPaginas > 1) {
+    <div class="paginacao">
+      <button
+        class="btn-paginacao"
+        (click)="paginaAnterior()"
+        [disabled]="paginaAtual === 1"
+        title="Página anterior"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="paginas-numeros">
+        @if (paginasVisiveis[0] > 1) {
+        <button class="btn-pagina" (click)="irParaPagina(1)">1</button>
+        @if (paginasVisiveis[0] > 2) {
+        <span class="pagina-ellipsis">...</span>
+        }
+        }
+        @for (pagina of paginasVisiveis; track pagina) {
+        <button
+          class="btn-pagina"
+          [class.ativa]="pagina === paginaAtual"
+          (click)="irParaPagina(pagina)"
+        >
+          {{ pagina }}
+        </button>
+        }
+        @if (paginasVisiveis[paginasVisiveis.length - 1] < totalPaginas) {
+        @if (paginasVisiveis[paginasVisiveis.length - 1] < totalPaginas - 1) {
+        <span class="pagina-ellipsis">...</span>
+        }
+        <button class="btn-pagina" (click)="irParaPagina(totalPaginas)">{{ totalPaginas }}</button>
+        }
+      </div>
+
+      <button
+        class="btn-paginacao"
+        (click)="proximaPagina()"
+        [disabled]="paginaAtual === totalPaginas"
+        title="Próxima página"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="info-paginacao">
+        <span>Página {{ paginaAtual }} de {{ totalPaginas }}</span>
+        <span class="separador">|</span>
+        <span>{{ pacientesBase.length }} paciente(s){{ termoBusca.trim() ? ' encontrado(s)' : ' no total' }}</span>
+      </div>
+    </div>
+    }
+  </div>
+</div>
+
+<!-- Modal de configuração da importação -->
+@if (mostrarModal) {
+<div class="modal-overlay" (click)="fecharModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Upload de Arquivo</h2>
+      <button class="btn-fechar-modal" (click)="fecharModal()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Arquivo selecionado -->
+      <div class="arquivo-preview">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <div class="arquivo-preview-info">
+          <span class="arquivo-preview-nome">{{ nomeArquivo }}</span>
+        </div>
+        <button class="btn-remover-preview" (click)="removerArquivo()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-divider">
+        <span>Selecione as opções abaixo para seu arquivo:*</span>
+      </div>
+
+      <!-- Campos do formulário -->
+      <div class="modal-form">
+        <div class="form-group">
+          <label>Selecione o perfil de exames</label>
+          <select
+            [(ngModel)]="perfilSelecionado"
+            (change)="perfilSelecionado && carregarExamesDoGrupo(perfilSelecionado)"
+            class="modal-select"
+          >
+            <option [value]="undefined" disabled selected>Selecione um perfil</option>
+            @for (perfil of perfisExames; track perfil.id) {
+            <option [value]="perfil.id">{{ perfil.nome }} ({{ perfil.qtdExames }} exames)</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Data da coleta*</label>
+          <input type="date" [(ngModel)]="dataColetaGlobal" class="modal-input" />
+        </div>
+
+        <div class="form-group-toggles">
+          <label class="toggle-item">
+            <div class="toggle-switch">
+              <input type="checkbox" [(ngModel)]="incluirGlicose" class="toggle-input" />
+              <span class="toggle-slider"></span>
+            </div>
+            <span class="toggle-label">Incluir Glicemia para diabéticos</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-modal-cancelar" (click)="fecharModal()">CANCELAR</button>
+      <button class="btn btn-modal-finalizar" (click)="finalizarImportacao()">FINALIZAR</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Preview dos pacientes antes de confirmar importação -->
+@if (mostrarPreview) {
+<div class="modal-overlay" (click)="cancelarPreview()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Visualização dos Pacientes</h2>
+      <button class="btn-fechar-modal" (click)="cancelarPreview()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Estatísticas -->
+      <div class="preview-stats">
+        <div class="stat-preview enviado">
+          <span class="stat-number">{{ estatisticas.enviados }}</span>
+          <span class="stat-text">Enviado</span>
+        </div>
+        <div class="stat-preview pendente">
+          <span class="stat-number">{{ estatisticas.pendentes }}</span>
+          <span class="stat-text">Pendente</span>
+        </div>
+        <div class="stat-preview erro">
+          <span class="stat-number">{{ estatisticas.erros }}</span>
+          <span class="stat-text">Erro</span>
+        </div>
+        <div class="stat-preview total">
+          <span class="stat-number">{{ estatisticas.total }}</span>
+          <span class="stat-text">Total</span>
+        </div>
+      </div>
+
+      <!-- Lista de pacientes -->
+      <div class="preview-list">
+        @for (paciente of pacientesFiltrados; track paciente.id) {
+        <div class="preview-item" [class]="'status-' + paciente.status">
+          <div class="preview-status-dot"></div>
+          <div class="preview-info">
+            <div class="preview-nome">{{ paciente.nome }}</div>
+            <div class="preview-cpf">{{ paciente.cpf }}</div>
+          </div>
+          <div class="preview-details">
+            <span class="preview-tratamento">{{ paciente.tratamento }}</span>
+            <span class="preview-diabetes">{{
+              paciente.diabetes ? 'Diabetes: Sim' : 'Diabetes: Não'
+            }}</span>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-modal-cancelar" (click)="cancelarPreview()" [disabled]="processando">
+        VOLTAR
+      </button>
+      <button
+        class="btn btn-modal-finalizar"
+        (click)="confirmarImportacao()"
+        [disabled]="processando || estatisticas.total === 0"
+      >
+        {{ processando ? 'IMPORTANDO...' : 'CONFIRMAR E IMPORTAR' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal de Edição -->
+@if (pacienteEditando) {
+<div class="modal-overlay" (click)="cancelarEdicao()">
+  <div class="modal-content modal-edicao" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Editar Paciente</h2>
+      <button class="btn-fechar-modal" (click)="cancelarEdicao()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <form class="form-edicao">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome Completo *</label>
+            <input type="text" [(ngModel)]="pacienteEditando.nome" name="nome" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>CPF *</label>
+            <input type="text" [(ngModel)]="pacienteEditando.cpf" name="cpf" required readonly />
+          </div>
+
+          <div class="form-group">
+            <label>Data de Nascimento</label>
+            <input type="text" [(ngModel)]="pacienteEditando.data" name="dataNascimento" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tratamento</label>
+            <input type="text" [(ngModel)]="pacienteEditando.tratamento" name="tratamento" />
+          </div>
+
+          <div class="form-group">
+            <label>Horário de Coleta</label>
+            <input type="text" [(ngModel)]="pacienteEditando.horarioColeta" name="horarioColeta" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group form-group-checkbox">
+            <label>
+              <input type="checkbox" [(ngModel)]="pacienteEditando.diabetes" name="diabetes" />
+              <span>Paciente tem diabetes</span>
+            </label>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="cancelarEdicao()">CANCELAR</button>
+      <button class="btn btn-primary" (click)="salvarEdicao()" [disabled]="salvandoEdicao">
+        {{ salvandoEdicao ? 'SALVANDO...' : 'SALVAR ALTERAÇÕES' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal de Edição de Exames -->
+@if (pacienteEditandoExames) {
+<div class="modal-overlay" (click)="cancelarEdicaoExames()">
+  <div class="modal-content modal-exames" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Editar Exames - {{ pacienteEditandoExames.nome }}</h2>
+      <button class="btn-fechar-modal" (click)="cancelarEdicaoExames()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body modal-body-exames">
+      <!-- Campo de busca de exames -->
+      <div class="busca-exames-section">
+        <div class="campo-busca">
+          <svg
+            class="icone-busca"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input
+            type="text"
+            [(ngModel)]="buscaExame"
+            (ngModelChange)="buscarExamesNoBackend()"
+            placeholder="Buscar exame por código ou nome..."
+            class="input-busca"
+          />
+        </div>
+      </div>
+
+      <div class="exames-columns">
+        <!-- Exames atuais do paciente -->
+        <div class="exames-atuais">
+          <h4>Exames Atribuídos ({{ examesEditandoTemp.length }})</h4>
+          <div class="lista-exames-edit">
+            @if (examesEditandoTemp.length > 0) { @for (exame of examesEditandoTemp; track
+            exame.iD_EXAME; let idx = $index) {
+            <div class="exame-item-edit">
+              <div class="exame-info">
+                <span class="exame-codigo">{{ exame.cD_EXAME_DB }}</span>
+                <span class="exame-nome">{{ exame.desC_EXAME }}</span>
+              </div>
+              <button class="btn-remover-pequeno" (click)="removerExameTemp(idx)" title="Remover">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            } } @else {
+            <p class="texto-vazio">Nenhum exame selecionado</p>
+            }
+          </div>
+        </div>
+
+        <!-- Lista de exames disponíveis -->
+        <div class="exames-disponiveis">
+          <h4>Exames Disponíveis</h4>
+          <div class="lista-exames-disponiveis">
+            @if (!buscaExame.trim()) {
+            <p class="texto-vazio">Digite para buscar exames...</p>
+            } @else if (carregandoExames) {
+            <div class="loading-exames">Buscando exames...</div>
+            } @else if (examesFiltrados.length > 0) { @for (exame of examesFiltrados; track
+            exame.iD_EXAME) {
+            <div
+              class="exame-item-disponivel"
+              [class.ja-adicionado]="exameJaAdicionado(exame.iD_EXAME)"
+              (click)="!exameJaAdicionado(exame.iD_EXAME) && adicionarExameTemp(exame)"
+            >
+              <div class="exame-info">
+                <span class="exame-codigo">{{ exame.cD_EXAME_DB || exame.CD_EXAME_DB }}</span>
+                <span class="exame-nome">{{ exame.dS_EXAME || exame.DS_EXAME }}</span>
+              </div>
+              @if (exameJaAdicionado(exame.iD_EXAME)) {
+              <span class="badge-adicionado">✓</span>
+              } @else {
+              <button class="btn-adicionar-pequeno" title="Adicionar">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              }
+            </div>
+            } } @else {
+            <p class="texto-vazio">Nenhum exame encontrado</p>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="cancelarEdicaoExames()">CANCELAR</button>
+      <button class="btn btn-primary" (click)="salvarExamesPaciente()" [disabled]="salvandoExames">
+        {{ salvandoExames ? 'SALVANDO...' : 'SALVAR EXAMES' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal de Erros de Importação -->
+@if (mostrarModalErros) {
+<div class="modal-overlay" (click)="fecharModalErros()">
+  <div class="modal-content modal-erros" (click)="$event.stopPropagation()">
+    <div class="modal-header modal-header-erros">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        Resultado da Importação
+      </h2>
+      <button class="btn-fechar-modal" (click)="fecharModalErros()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Resumo da importação -->
+      <div class="resumo-importacao">
+        <div class="resumo-item resumo-total">
+          <span class="resumo-numero">{{ resumoImportacao.total }}</span>
+          <span class="resumo-label">Total no arquivo</span>
+        </div>
+        <div class="resumo-item resumo-sucesso">
+          <span class="resumo-numero">{{ resumoImportacao.sucessos }}</span>
+          <span class="resumo-label">Importados com sucesso</span>
+        </div>
+        <div class="resumo-item resumo-erro">
+          <span class="resumo-numero">{{ resumoImportacao.erros }}</span>
+          <span class="resumo-label">Com erro</span>
+        </div>
+      </div>
+
+      @if (errosImportacao.length > 0) {
+      <div class="erros-header">
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          Pacientes que não foram importados:
+        </h3>
+      </div>
+
+      <div class="lista-erros">
+        @for (erro of errosImportacao; track erro.cpf) {
+        <div class="erro-item">
+          <div class="erro-info">
+            <div class="erro-linha">
+              <span class="badge-linha">Linha {{ erro.linha }}</span>
+            </div>
+            <div class="erro-paciente">
+              <span class="erro-nome">{{ erro.nome }}</span>
+              <span class="erro-cpf">CPF: {{ erro.cpf }}</span>
+            </div>
+          </div>
+          <div class="erro-mensagem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <span>{{ erro.erro }}</span>
+          </div>
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="sucesso-completo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        <p>Todos os pacientes foram importados com sucesso!</p>
+      </div>
+      }
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" (click)="fecharModalErros()">ENTENDI</button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Overlay de bloqueio durante transferência -->
+@if (transferindo) {
+<div class="overlay-bloqueio">
+  <div class="bloqueio-content">
+    <div class="spinner-bloqueio"></div>
+    <h3>Transferindo Pacientes</h3>
+    <p class="aviso-texto">Por favor, aguarde. Não feche esta página.</p>
+  </div>
+</div>
+}

@@ -1,0 +1,53 @@
+<div class="recuperar-container">
+  <div class="recuperar-card">
+    <div class="recuperar-header">
+      <h1>Recuperar Senha</h1>
+      <p>Informe seu email para receber as instruções</p>
+    </div>
+
+    <form [formGroup]="recuperarForm" (ngSubmit)="onSubmit()">
+      <!-- Campo Email -->
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          [class.error]="email?.invalid && email?.touched"
+        />
+        <div class="error-message" *ngIf="email?.invalid && email?.touched">
+          <span *ngIf="email?.errors?.['required']">Email é obrigatório</span>
+          <span *ngIf="email?.errors?.['email']">Email inválido</span>
+        </div>
+      </div>
+
+      <!-- Mensagem de Erro -->
+      <div class="alert-error" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Mensagem de Sucesso -->
+      <div class="alert-success" *ngIf="successMessage">
+        {{ successMessage }}
+      </div>
+
+      <!-- Botão Submit -->
+      <button type="submit" class="btn-recuperar" [disabled]="isLoading || recuperarForm.invalid">
+        <span *ngIf="!isLoading">Enviar Email</span>
+        <span *ngIf="isLoading">
+          <span class="spinner"></span>
+          Enviando...
+        </span>
+      </button>
+
+      <!-- Voltar para Login -->
+      <div class="recuperar-footer">
+        <button type="button" class="btn-voltar" (click)="voltarLogin()">
+          ← Voltar para Login
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

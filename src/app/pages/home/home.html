@@ -1,0 +1,24 @@
+<div class="home-wrapper">
+  <main class="home-container">
+    <!-- Main Menu -->
+    <section class="main-menu">
+      <h3 class="section-title">Acesso Rápido</h3>
+      <div class="menu-grid">
+        @for (item of menuItems; track $index) {
+        <div class="menu-card" [class]="'card-' + item.color" (click)="navigateTo(item.route)">
+          <div class="card-icon" [innerHTML]="getIcon(item.icon)"></div>
+          <div class="card-content">
+            <h4>{{ item.title }}</h4>
+            <p>{{ item.description }}</p>
+          </div>
+          <div class="card-arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
+        }
+      </div>
+    </section>
+  </main>
+</div>

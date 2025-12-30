@@ -1,0 +1,71 @@
+<div class="login-container">
+  <div class="login-card">
+    <!-- Laboratório Info -->
+    <div class="laboratorio-info" *ngIf="laboratorio">
+      <div class="laboratorio-label">Laboratório Selecionado:</div>
+      <div class="laboratorio-value">{{ laboratorio }}</div>
+      <button type="button" class="btn-voltar" (click)="voltarLaboratorio()">
+        ← Trocar Laboratório
+      </button>
+    </div>
+
+    <div class="login-header">
+      <h1>Bem-vindo!</h1>
+      <p>Faça login para continuar</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <!-- Campo Email (era Login) -->
+      <div class="form-group">
+        <label for="login">Email</label>
+        <input
+          type="email"
+          id="login"
+          formControlName="login"
+          placeholder="seu@email.com"
+          autocomplete="email"
+          [class.error]="login?.invalid && login?.touched"
+        />
+        <div class="error-message" *ngIf="login?.invalid && login?.touched">
+          <span *ngIf="login?.errors?.['required']">Email é obrigatório</span>
+          <span *ngIf="login?.errors?.['email']">Email inválido</span>
+        </div>
+      </div>
+
+      <!-- Campo Senha -->
+      <div class="form-group">
+        <label for="senha">Senha</label>
+        <input
+          type="password"
+          id="senha"
+          formControlName="senha"
+          placeholder="Digite sua senha"
+          autocomplete="current-password"
+          [class.error]="senha?.invalid && senha?.touched"
+        />
+        <div class="error-message" *ngIf="senha?.invalid && senha?.touched">
+          <span *ngIf="senha?.errors?.['required']">Senha é obrigatória</span>
+        </div>
+      </div>
+
+      <!-- Mensagem de Erro Geral -->
+      <div class="alert-error" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <!-- Botão Submit -->
+      <button type="submit" class="btn-login" [disabled]="isLoading || loginForm.invalid">
+        <span *ngIf="!isLoading">Entrar</span>
+        <span *ngIf="isLoading">
+          <span class="spinner"></span>
+          Carregando...
+        </span>
+      </button>
+
+      <!-- Link Esqueci a Senha -->
+      <div class="login-footer">
+        <a [routerLink]="['/recuperar-senha']" class="link-recuperar">Esqueceu a senha?</a>
+      </div>
+    </form>
+  </div>
+</div>

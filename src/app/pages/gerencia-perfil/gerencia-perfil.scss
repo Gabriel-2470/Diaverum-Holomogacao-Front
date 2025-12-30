@@ -1,0 +1,292 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+  }
+}
+
+.btn-primary {
+  background-color: #e86825;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background-color: #d15a1e;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 140px;
+  padding: 12px 20px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  .sub {
+    font-size: 10px;
+    font-weight: 500;
+    color: #9ca3af;
+  }
+}
+
+.perfis-lista {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+
+.perfil-card {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  transition: background-color 0.2s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: #fafafa;
+  }
+
+  &.expandido {
+    background-color: #f9fafb;
+  }
+}
+
+.perfil-header {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1fr 140px;
+  padding: 16px 20px;
+  cursor: pointer;
+  align-items: center;
+}
+
+.col-perfil {
+  display: flex;
+  align-items: center;
+}
+
+.perfil-nome {
+  font-size: 15px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.col-responsavel {
+  display: flex;
+  align-items: center;
+}
+
+.responsavel-nome {
+  font-size: 14px;
+  color: #374151;
+}
+
+.col-exames {
+  display: flex;
+  align-items: center;
+}
+
+.exames-count {
+  font-size: 14px;
+  color: #374151;
+}
+
+.col-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.perfil-acoes {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background-color: transparent;
+
+  &:hover {
+    background-color: #f3f4f6;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+.btn-editar {
+  color: #6d28d9;
+
+  &:hover {
+    background-color: #ede9fe;
+  }
+}
+
+.btn-excluir {
+  color: #dc2626;
+
+  &:hover {
+    background-color: #fee2e2;
+  }
+}
+
+.seta-expandir {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: transform 0.3s ease;
+
+  svg {
+    display: block;
+  }
+}
+
+.perfil-card.expandido .seta-expandir {
+  transform: rotate(180deg);
+}
+
+.exames-expandido {
+  background-color: #f3f4f6;
+  padding: 0;
+  border-top: 1px solid #e5e7eb;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+.exames-table-header {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr;
+  padding: 12px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: #e5e7eb;
+}
+
+.exame-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr;
+  padding: 12px 20px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #374151;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.exame-col-codigo {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.exame-col-nome {
+  display: flex;
+  align-items: center;
+}
+
+.exame-col-material {
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+}
+
+.sem-exames {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #ffffff;
+  color: #9ca3af;
+  font-size: 14px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.sem-dados {
+  text-align: center;
+  padding: 80px 20px;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-top: 20px;
+
+  p {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .subtitulo {
+    font-size: 14px;
+    color: #9ca3af;
+    font-weight: 400;
+  }
+}

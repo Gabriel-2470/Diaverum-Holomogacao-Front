@@ -1,0 +1,300 @@
+<div class="page-wrapper">
+  <div class="top-bar">
+    <button class="link-voltar" (click)="voltar()">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      Voltar
+    </button>
+  </div>
+
+  <div class="content-area">
+    <div class="page-title">
+      <h1>{{ isEdicao ? 'Editar Perfil de Exame' : 'Novo Perfil de Exame' }}</h1>
+      @if (isEdicao && nomePerfil) {
+      <p class="perfil-atual">
+        Perfil: <strong>{{ nomePerfil }}</strong>
+      </p>
+      }
+      <p class="descricao">
+        Configure o nome, responsável e selecione os exames que farão parte deste perfil
+      </p>
+    </div>
+
+    <div class="grid-layout">
+      <div class="coluna-principal">
+        <section class="secao">
+          <h2>Informações Básicas</h2>
+
+          <div class="campo">
+            <label>Nome do Perfil *</label>
+            <input
+              type="text"
+              [(ngModel)]="nomePerfil"
+              placeholder="Ex: Check-up Completo, Perfil Cardiológico"
+              class="input-text"
+            />
+          </div>
+
+          <div class="campo">
+            <label>Responsável *</label>
+            <input
+              type="text"
+              [(ngModel)]="responsavel"
+              placeholder="Nome do responsável pelo perfil"
+              class="input-text"
+              readonly
+              disabled
+            />
+          </div>
+
+          <div class="campo">
+            <label>Unidades *</label>
+            <div class="unidades-container">
+              <div class="acoes-unidades">
+                <button type="button" class="btn-acao-unidade" (click)="selecionarTodasUnidades()">
+                  Selecionar Todas
+                </button>
+                <button
+                  type="button"
+                  class="btn-acao-unidade"
+                  (click)="deselecionarTodasUnidades()"
+                >
+                  Desmarcar Todas
+                </button>
+              </div>
+              <div class="lista-unidades">
+                @for (unidade of unidades; track unidade.iD_UNIDADE) {
+                <label
+                  class="unidade-item"
+                  [class.selecionada]="unidadeEstaSelecionada(unidade.iD_UNIDADE)"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="unidadeEstaSelecionada(unidade.iD_UNIDADE)"
+                    (change)="toggleUnidade(unidade.iD_UNIDADE)"
+                    class="checkbox-unidade"
+                  />
+                  <span class="unidade-label"
+                    >{{ unidade.iD_UNIDADE }} - {{ unidade.descricao }}</span
+                  >
+                </label>
+                }
+              </div>
+              @if (unidadesSelecionadas.length > 0) {
+              <div class="contador-unidades">
+                {{ unidadesSelecionadas.length }} unidade(s) selecionada(s)
+              </div>
+              }
+            </div>
+          </div>
+        </section>
+
+        <section class="secao">
+          <div class="secao-header">
+            <h2>Exames do Perfil</h2>
+            <span class="contador">{{ examesSelecionados.length }} selecionado(s)</span>
+          </div>
+
+          @if (examesSelecionados.length > 0) {
+          <div class="lista-selecionados">
+            @for (exame of examesSelecionados; track exame.id) {
+            <div class="chip-exame">
+              <span class="chip-texto"
+                >{{ exame.codigo || 'N/A' }} - {{ exame.nome || 'Sem nome' }}</span
+              >
+              <button class="chip-remover" (click)="toggleExame(exame)" title="Remover exame">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            }
+          </div>
+          } @else {
+          <div class="vazio-state">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <p>Nenhum exame selecionado ainda</p>
+            <span>Selecione exames na lista ao lado</span>
+          </div>
+          }
+        </section>
+      </div>
+
+      <div class="coluna-lateral">
+        <section class="secao secao-exames">
+          <h2>Buscar Exames</h2>
+
+          <div class="campo-busca">
+            <svg
+              class="icone-busca"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="termoBusca"
+              (ngModelChange)="onBuscaChange()"
+              placeholder="Pesquisar por nome ou código"
+              class="input-busca"
+            />
+          </div>
+
+          <div class="acoes-massa">
+            <button class="btn-acao-massa" (click)="selecionarTodos()">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Selecionar Visíveis
+            </button>
+            <button class="btn-acao-massa" (click)="deselecionarTodos()">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Desmarcar Todos
+            </button>
+          </div>
+
+          @if (carregandoExames) {
+          <div class="loading-inicial">
+            <div class="spinner"></div>
+            <p>Carregando exames...</p>
+          </div>
+          } @else if (erroCarregamento) {
+          <div class="erro-state">
+            <p>{{ erroCarregamento }}</p>
+            <button class="btn-tentar-novamente" (click)="carregarExames()">
+              Tentar Novamente
+            </button>
+          </div>
+          } @else if (examesDisponiveis.length === 0) {
+          <div class="vazio-state">
+            <p>Nenhum exame encontrado</p>
+            <span>Tente outro termo de busca</span>
+          </div>
+          } @else {
+          <div class="lista-exames" #listaExames (scroll)="onScroll($event)">
+            @for (exame of examesDisponiveis; track exame.id) {
+            <label class="exame-item" [class.selecionado]="exameEstaSelecionado(exame)">
+              <input
+                type="checkbox"
+                [checked]="exameEstaSelecionado(exame)"
+                (change)="toggleExame(exame)"
+                class="checkbox-hidden"
+              />
+              <div class="checkbox-custom">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div class="exame-dados">
+                <div class="exame-linha1">
+                  <span class="exame-codigo">{{ exame.codigo }}</span>
+                  <span class="exame-nome">{{ exame.nome }}</span>
+                </div>
+                <span class="exame-material">{{ exame.material }}</span>
+              </div>
+            </label>
+            } @if (carregandoMais) {
+            <div class="loading-mais">
+              <div class="spinner-pequeno"></div>
+              <span>Carregando mais exames...</span>
+            </div>
+            } @if (!carregandoMais && paginaAtual >= totalPaginas && examesDisponiveis.length > 0) {
+            <div class="fim-lista">
+              <span>Todos os {{ totalRegistros }} exames foram carregados</span>
+            </div>
+            }
+          </div>
+          }
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-fixo">
+    <div class="footer-content">
+      <button class="btn btn-secundario" (click)="voltar()">Cancelar</button>
+      <button class="btn btn-primario" (click)="salvar()">
+        {{ isEdicao ? 'Salvar Alterações' : 'Criar Perfil' }}
+      </button>
+    </div>
+  </div>
+</div>

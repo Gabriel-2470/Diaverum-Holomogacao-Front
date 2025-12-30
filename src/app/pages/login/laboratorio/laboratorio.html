@@ -1,0 +1,31 @@
+<div class="laboratorio-container">
+  <div class="laboratorio-card">
+    <div class="laboratorio-header">
+      <h1>Selecione o Laboratório</h1>
+      <p>Informe o laboratório para continuar</p>
+    </div>
+
+    <form [formGroup]="laboratorioForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="laboratorio">Laboratório</label>
+        <input
+          type="text"
+          id="laboratorio"
+          formControlName="laboratorio"
+          placeholder="Ex: Lab Diaverum"
+          class="form-control"
+          [class.error]="laboratorio?.invalid && laboratorio?.touched"
+        />
+        @if (laboratorio?.invalid && laboratorio?.touched) {
+        <div class="error-message">
+          @if (laboratorio?.errors?.['required']) {
+          <span>Laboratório é obrigatório</span>
+          }
+        </div>
+        }
+      </div>
+
+      <button type="submit" class="btn-continue">Continuar</button>
+    </form>
+  </div>
+</div>
