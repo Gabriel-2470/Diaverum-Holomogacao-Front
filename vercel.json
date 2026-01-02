@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api-diaverum.icytree-c0008921.centralus.azurecontainerapps.io/api/:path*"
+      "destination": "https://diaverumapi-3q48.onrender.com/api/:path*"
     }
   ]
 }
