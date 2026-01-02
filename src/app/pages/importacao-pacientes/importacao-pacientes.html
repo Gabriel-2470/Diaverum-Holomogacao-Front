@@ -9,19 +9,19 @@
           <div class="stat-item stat-enviado">
             <div class="stat-dot"></div>
             <span class="stat-numero">{{ estatisticas.enviados }}</span>
-            <span class="stat-label">enviados</span>
+            <span class="stat-label">Transferidos</span>
           </div>
 
           <div class="stat-item stat-pendente">
             <div class="stat-dot"></div>
             <span class="stat-numero">{{ estatisticas.pendentes }}</span>
-            <span class="stat-label">pendentes</span>
+            <span class="stat-label">Pendente para transferência</span>
           </div>
 
           <div class="stat-item stat-erro">
             <div class="stat-dot"></div>
             <span class="stat-numero">{{ estatisticas.erros }}</span>
-            <span class="stat-label">erros</span>
+            <span class="stat-label">Erro(s)</span>
           </div>
 
           <div class="stat-total">
@@ -126,6 +126,7 @@
   <!-- Barra de ferramentas -->
   <div class="toolbar">
     <div class="toolbar-left">
+      <!-- Campo de busca -->
       <div class="campo-busca">
         <svg
           class="icone-busca"
@@ -146,23 +147,56 @@
           type="text"
           [(ngModel)]="termoBusca"
           (ngModelChange)="onBuscaChange()"
-          placeholder="Pesquisar..."
+          placeholder="Pesquisar por nome ou CPF..."
           class="input-busca"
+          title="Pesquisar por nome ou CPF..."
         />
       </div>
-    </div>
 
-    @if (quantidadeSelecionados > 0) {
-    <div class="toolbar-right">
+      <!-- Separador visual -->
+      <div class="toolbar-separator"></div>
+
+      <!-- Filtro de Status -->
+      <div class="filtro-status-grupo">
+        <button
+          class="btn-filtro-status"
+          [class.ativo]="filtroStatus === 'todos'"
+          (click)="aplicarFiltroStatus('todos')"
+        >
+          Todos
+        </button>
+        <button
+          class="btn-filtro-status"
+          [class.ativo]="filtroStatus === 'pendentes'"
+          (click)="aplicarFiltroStatus('pendentes')"
+        >
+          <span class="status-dot-filtro pendente"></span>
+          Pendentes
+        </button>
+        <button
+          class="btn-filtro-status"
+          [class.ativo]="filtroStatus === 'enviados'"
+          (click)="aplicarFiltroStatus('enviados')"
+        >
+          <span class="status-dot-filtro enviado"></span>
+          Transferidos
+        </button>
+      </div>
+
+      <!-- Separador visual -->
+      <div class="toolbar-separator"></div>
+
+      <!-- Botão de Filtros por Data -->
       <button
-        class="btn-excluir-selecionados"
-        (click)="excluirPacientesSelecionados()"
-        [disabled]="excluindoEmMassa"
+        class="btn-filtro-data"
+        [class.ativo]="mostrarFiltrosAvancados"
+        [class.tem-filtro]="filtroDataInicio || filtroDataFim"
+        (click)="toggleFiltrosAvancados()"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -170,26 +204,121 @@
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path
-            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-          ></path>
-          <line x1="10" y1="11" x2="10" y2="17"></line>
-          <line x1="14" y1="11" x2="14" y2="17"></line>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
-        @if (excluindoEmMassa) {
-        <span>Excluindo {{ progressoExclusao.atual }}/{{ progressoExclusao.total }}...</span>
-        } @else {
-        <span
-          >Excluir {{ quantidadeSelecionados }} paciente{{
-            quantidadeSelecionados > 1 ? 's' : ''
-          }}</span
-        >
+        <span>Data</span>
+        @if (filtroDataInicio || filtroDataFim) {
+          <span class="badge-filtro-count">1</span>
         }
       </button>
     </div>
-    }
+
+    <!-- Área direita: Indicador de filtros ativos + Botão excluir -->
+    <div class="toolbar-right">
+      @if (temFiltroAtivo) {
+        <button class="btn-limpar-filtros" (click)="limparFiltros()">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Limpar filtros
+        </button>
+      }
+
+      @if (quantidadeSelecionados > 0) {
+        <button
+          class="btn-excluir-selecionados"
+          (click)="excluirPacientesSelecionados()"
+          [disabled]="excluindoEmMassa"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+          @if (excluindoEmMassa) {
+            <span>Removendo {{ progressoExclusao.atual }}/{{ progressoExclusao.total }}...</span>
+          } @else {
+            <span>Remover {{ quantidadeSelecionados }} paciente{{ quantidadeSelecionados > 1 ? 's' : '' }}</span>
+          }
+        </button>
+      }
+    </div>
   </div>
+
+  <!-- Painel de Filtro por Data (expansível) -->
+  @if (mostrarFiltrosAvancados) {
+    <div class="filtros-data-panel">
+      <div class="filtros-data-content">
+        <span class="filtros-data-label">Filtrar por:</span>
+        
+        <!-- Seletor do tipo de data -->
+        <div class="filtro-tipo-data">
+          <button 
+            class="btn-tipo-data" 
+            [class.ativo]="filtroTipoData === 'cadastro'"
+            (click)="filtroTipoData = 'cadastro'; aplicarFiltroData()"
+          >
+            Data de Cadastro
+          </button>
+          <button 
+            class="btn-tipo-data" 
+            [class.ativo]="filtroTipoData === 'coleta'"
+            (click)="filtroTipoData = 'coleta'; aplicarFiltroData()"
+          >
+            Data de Coleta
+          </button>
+        </div>
+
+        <div class="filtros-data-campos">
+          <div class="campo-data-wrapper">
+            <label>De:</label>
+            <input
+              type="date"
+              [(ngModel)]="filtroDataInicio"
+              (ngModelChange)="aplicarFiltroData()"
+              class="input-data"
+            />
+          </div>
+          <div class="campo-data-wrapper">
+            <label>Até:</label>
+            <input
+              type="date"
+              [(ngModel)]="filtroDataFim"
+              (ngModelChange)="aplicarFiltroData()"
+              class="input-data"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Lista de Pacientes -->
   <div class="content-area">
@@ -215,21 +344,21 @@
     </div>
 
     <div class="pacientes-lista">
-      @for (paciente of pacientesFiltrados; track paciente.id) {
+      @for (paciente of pacientesFiltrados; track paciente.cpf) {
       <div
         class="paciente-card"
         [class.expandido]="paciente.expandido"
-        [class.selecionado]="isPacienteSelecionado(paciente.id)"
+        [class.selecionado]="isPacienteSelecionado(paciente.cpf)"
       >
         <div class="paciente-row">
           <div class="col-checkbox">
             <input
               type="checkbox"
               class="checkbox-paciente"
-              [checked]="isPacienteSelecionado(paciente.id)"
+              [checked]="isPacienteSelecionado(paciente.cpf)"
               [disabled]="paciente.status === 'enviado'"
               [title]="paciente.status === 'enviado' ? 'Paciente já enviado - não pode ser selecionado' : 'Selecionar paciente'"
-              (change)="togglePacienteSelecionado(paciente.id)"
+              (change)="togglePacienteSelecionado(paciente.cpf)"
             />
           </div>
 
@@ -325,8 +454,8 @@
                   [class.disabled]="paciente.podeEditar === false"
                   [title]="
                     paciente.podeEditar === false
-                      ? 'Paciente já enviado - exclusão bloqueada'
-                      : 'Excluir paciente'
+                      ? 'Paciente já enviado - remoção bloqueada'
+                      : 'Remover paciente'
                   "
                 >
                   <svg
@@ -357,7 +486,7 @@
         @if (paciente.expandido) {
         <div class="paciente-detalhes">
           <div class="detalhes-header">
-            <h3>Exames do Paciente</h3>
+            <h3>Exames do Paciente @if (paciente.nomePerfil) {<span class="perfil-nome">- {{ paciente.nomePerfil }}</span>}</h3>
             <div class="detalhes-header-right">
               <span class="badge-count">{{ paciente.exames?.length || 0 }} exame(s)</span>
               <button
@@ -673,11 +802,11 @@
       <div class="preview-stats">
         <div class="stat-preview enviado">
           <span class="stat-number">{{ estatisticas.enviados }}</span>
-          <span class="stat-text">Enviado</span>
+          <span class="stat-text">Transferido</span>
         </div>
         <div class="stat-preview pendente">
           <span class="stat-number">{{ estatisticas.pendentes }}</span>
-          <span class="stat-text">Pendente</span>
+          <span class="stat-text">Pendente p/ transferência</span>
         </div>
         <div class="stat-preview erro">
           <span class="stat-number">{{ estatisticas.erros }}</span>
@@ -828,31 +957,31 @@
     </div>
 
     <div class="modal-body modal-body-exames">
-      <!-- Campo de busca de exames -->
+      <!-- Campos de busca de exames -->
       <div class="busca-exames-section">
-        <div class="campo-busca">
-          <svg
-            class="icone-busca"
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
-          <input
-            type="text"
-            [(ngModel)]="buscaExame"
-            (ngModelChange)="buscarExamesNoBackend()"
-            placeholder="Buscar exame por código ou nome..."
-            class="input-busca"
-          />
+        <div class="campos-busca-duplo">
+          <div class="campo-busca">
+            <label class="label-busca">Código</label>
+            <input
+              type="text"
+              [(ngModel)]="buscaExameCodigo"
+              (ngModelChange)="onBuscaExameCodigoChange($event)"
+              placeholder="Ex: FOSRES, HB..."
+              class="input-busca"
+              title="Buscar por código do exame"
+            />
+          </div>
+          <div class="campo-busca">
+            <label class="label-busca">Nome do Exame</label>
+            <input
+              type="text"
+              [(ngModel)]="buscaExameNome"
+              (ngModelChange)="onBuscaExameNomeChange($event)"
+              placeholder="Ex: Fósforo, Hemograma..."
+              class="input-busca"
+              title="Buscar por nome do exame"
+            />
+          </div>
         </div>
       </div>
 
@@ -893,24 +1022,23 @@
 
         <!-- Lista de exames disponíveis -->
         <div class="exames-disponiveis">
-          <h4>Exames Disponíveis</h4>
-          <div class="lista-exames-disponiveis">
-            @if (!buscaExame.trim()) {
-            <p class="texto-vazio">Digite para buscar exames...</p>
-            } @else if (carregandoExames) {
+          <h4>Exames Disponíveis @if (totalExamesDisponiveis > 0) { <span class="contador-exames">({{ examesEncontrados.length }} de {{ totalExamesDisponiveis }})</span> }</h4>
+          <div class="lista-exames-disponiveis" (scroll)="onScrollExames($event)">
+            @if (!buscaExameCodigo.trim() && !buscaExameNome.trim()) {
+            <p class="texto-vazio">Digite código ou nome para buscar exames...</p>
+            } @else if (carregandoExames && examesEncontrados.length === 0) {
             <div class="loading-exames">Buscando exames...</div>
-            } @else if (examesFiltrados.length > 0) { @for (exame of examesFiltrados; track
-            exame.iD_EXAME) {
+            } @else if (examesFiltrados.length > 0) { @for (exame of examesFiltrados; track $index) {
             <div
               class="exame-item-disponivel"
-              [class.ja-adicionado]="exameJaAdicionado(exame.iD_EXAME)"
-              (click)="!exameJaAdicionado(exame.iD_EXAME) && adicionarExameTemp(exame)"
+              [class.ja-adicionado]="exameJaAdicionado(exame.iD_EXAME || exame.ID_EXAME)"
+              (click)="!exameJaAdicionado(exame.iD_EXAME || exame.ID_EXAME) && adicionarExameTemp(exame)"
             >
               <div class="exame-info">
-                <span class="exame-codigo">{{ exame.cD_EXAME_DB || exame.CD_EXAME_DB }}</span>
+                <span class="exame-codigo">{{ exame.cD_EXAME || exame.CD_EXAME }}</span>
                 <span class="exame-nome">{{ exame.dS_EXAME || exame.DS_EXAME }}</span>
               </div>
-              @if (exameJaAdicionado(exame.iD_EXAME)) {
+              @if (exameJaAdicionado(exame.iD_EXAME || exame.ID_EXAME)) {
               <span class="badge-adicionado">✓</span>
               } @else {
               <button class="btn-adicionar-pequeno" title="Adicionar">
@@ -931,7 +1059,11 @@
               </button>
               }
             </div>
-            } } @else {
+            } 
+            @if (carregandoMaisExames) {
+              <div class="loading-exames loading-mais">Carregando mais exames...</div>
+            }
+            } @else {
             <p class="texto-vazio">Nenhum exame encontrado</p>
             }
           </div>

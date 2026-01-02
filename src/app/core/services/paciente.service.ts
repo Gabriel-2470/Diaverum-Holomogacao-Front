@@ -154,6 +154,15 @@ export class PacienteService {
     });
   }
 
+  /**
+   * Remove pacientes da listagem por CPF (soft delete)
+   */
+  removerPacientesPorCpf(cpfs: string[]): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/agenda-detalhe/remover-por-cpf`, {
+      body: { cpfs }
+    });
+  }
+
   // ==================== AGENDAMENTOS ==
 
   /**
@@ -207,6 +216,49 @@ export class PacienteService {
   }
 
   // ==================== AGENDA DETALHE ====================
+
+  /**
+   * 🚀 NOVO: Busca agenda detalhe usando a VIEW otimizada (VLT_AGENDA_DETALHE_SEL_PAGED)
+   * Retorna dados consolidados: paciente + agendamento + exames em uma única chamada
+   */
+  buscarAgendaDetalhePaged(offset: number = 0, pageSize: number = 1000, idUnidade: number): Observable<any> {
+    const params = new HttpParams()
+      .set('offset', offset.toString())
+      .set('pageSize', pageSize.toString())
+      .set('idUnidade', idUnidade.toString());
+
+    return this.http.get<any>(`${this.apiUrl}/agenda-detalhe/paged`, { params });
+  }
+
+  /**
+   * 🚀 NOVO: Busca apenas registros pendentes de envio (IND_REG_ENVIADO = 0)
+   */
+  buscarAgendaDetalhePendentes(idUnidade: number): Observable<any> {
+    const params = new HttpParams().set('idUnidade', idUnidade.toString());
+    return this.http.get<any>(`${this.apiUrl}/agenda-detalhe/pending`, { params });
+  }
+
+  /**
+   * 🚀 NOVO: Busca avançada na view com múltiplos filtros
+   */
+  buscarAgendaDetalheSearch(
+    idUnidade: number,
+    cpf?: string,
+    indRegEnviado?: number,
+    dataInicio?: string,
+    dataFim?: string,
+    idGrupoExame?: number
+  ): Observable<any> {
+    let params = new HttpParams().set('idUnidade', idUnidade.toString());
+    
+    if (cpf) params = params.set('cpf', cpf);
+    if (indRegEnviado !== undefined) params = params.set('indRegEnviado', indRegEnviado.toString());
+    if (dataInicio) params = params.set('dataInicio', dataInicio);
+    if (dataFim) params = params.set('dataFim', dataFim);
+    if (idGrupoExame) params = params.set('idGrupoExame', idGrupoExame.toString());
+
+    return this.http.get<any>(`${this.apiUrl}/agenda-detalhe/search`, { params });
+  }
 
   /**
    * Cria um detalhe de agenda

@@ -225,20 +225,276 @@
   max-width: 1600px;
   margin: 0 auto;
   padding: 16px 32px;
+  position: relative;
+  z-index: 1;
 }
 
 .toolbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  flex-shrink: 0;
 }
+
+.toolbar-separator {
+  width: 1px;
+  height: 28px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+// ==================== FILTROS DE STATUS ====================
+
+.filtro-status-grupo {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.btn-filtro-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #475569;
+  }
+
+  &.ativo {
+    background: white;
+    color: #1e293b;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.status-dot-filtro {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.pendente {
+    background: #f59e0b;
+  }
+
+  &.enviado {
+    background: #10b981;
+  }
+}
+
+// ==================== FILTRO DE DATA ====================
+
+.btn-filtro-data {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: white;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+  }
+
+  &.ativo {
+    border-color: #e86825;
+    background: #fff7ed;
+    color: #e86825;
+  }
+
+  &.tem-filtro {
+    border-color: #e86825;
+    color: #e86825;
+  }
+}
+
+.badge-filtro-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #e86825;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 9px;
+}
+
+// ==================== PAINEL DE DATA ====================
+
+.filtros-data-panel {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 32px;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filtros-data-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.filtros-data-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+// Seletor do tipo de data (cadastro ou coleta)
+.filtro-tipo-data {
+  display: flex;
+  background: #e2e8f0;
+  border-radius: 6px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.btn-tipo-data {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #64748b;
+  white-space: nowrap;
+
+  &:hover {
+    color: #475569;
+  }
+
+  &.ativo {
+    background: white;
+    color: #1e293b;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.filtros-data-campos {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.campo-data-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+}
+
+.input-data {
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1e293b;
+  transition: all 0.15s ease;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: #e86825;
+  }
+
+  &:hover:not(:focus) {
+    border-color: #cbd5e1;
+  }
+}
+
+// ==================== BOTÃO LIMPAR FILTROS ====================
+
+.btn-limpar-filtros {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+  }
+}
+
+// ==================== ELEMENTOS EXISTENTES ====================
 
 .selecao-info {
   display: flex;
@@ -352,8 +608,9 @@
 
 .campo-busca {
   position: relative;
-  flex: 1;
-  max-width: 400px;
+  width: 260px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .icone-busca {
@@ -363,6 +620,7 @@
   transform: translateY(-50%);
   color: #94a3b8;
   pointer-events: none;
+  z-index: 1;
 }
 
 .input-busca {
@@ -373,6 +631,7 @@
   font-size: 14px;
   color: #1e293b;
   transition: all 0.2s;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -733,6 +992,12 @@
     font-weight: 600;
     color: #1e293b;
     margin: 0;
+
+    .perfil-nome {
+      font-weight: 500;
+      color: #7c3aed;
+      margin-left: 8px;
+    }
   }
 }
 
@@ -1700,25 +1965,32 @@
   padding-bottom: 16px;
   border-bottom: 1px solid #e2e8f0;
 
-  .campo-busca {
-    position: relative;
+  .campos-busca-duplo {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
     width: 100%;
+  }
 
-    .icone-busca {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #94a3b8;
+  .campo-busca {
+    flex: 1;
+
+    .label-busca {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 4px;
     }
 
     .input-busca {
       width: 100%;
-      padding: 10px 12px 10px 40px;
+      padding: 10px 12px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       font-size: 14px;
       transition: all 0.2s;
+      box-sizing: border-box;
 
       &:focus {
         outline: none;
@@ -1781,6 +2053,19 @@
       background: #94a3b8;
     }
   }
+}
+
+.loading-mais {
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #6366f1;
+}
+
+.contador-exames {
+  font-size: 12px;
+  font-weight: normal;
+  color: #64748b;
 }
 
 .exame-item-edit {

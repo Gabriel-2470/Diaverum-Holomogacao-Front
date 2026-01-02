@@ -10,12 +10,16 @@ interface UsuarioDTO {
   nomE_USER?: string;
   NOME_USER?: string;
   email?: string;
+  // Pode vir como 'role' (cliente) ou 'ROLE' (API/DB)
+  role?: string;
+  ROLE?: string;
 }
 
 interface Usuario {
   id: number;
   nome: string;
   email: string;
+  role?: string;
 }
 
 @Injectable({
@@ -55,6 +59,7 @@ export class UsuarioService {
           id: u.iD_USER || u.ID_USER || 0,
           nome: u.nomE_USER || u.NOME_USER || 'N/A',
           email: u.email || '',
+          role: (u.role as string) || (u.ROLE as string) || ''
         }));
       })
     );

@@ -45,6 +45,7 @@
           <div class="col-acoes">
             <div class="perfil-acoes" (click)="$event.stopPropagation()">
               <button
+                *ngIf="perfil.canEdit === true"
                 class="btn-icon btn-editar"
                 (click)="editarPerfil(perfil)"
                 title="Editar perfil"
@@ -64,6 +65,7 @@
                 </svg>
               </button>
               <button
+                *ngIf="perfil.canDelete === true"
                 class="btn-icon btn-excluir"
                 (click)="excluirPerfil(perfil)"
                 title="Excluir perfil"

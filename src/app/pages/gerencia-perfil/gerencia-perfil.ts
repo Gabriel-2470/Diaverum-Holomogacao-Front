@@ -19,6 +19,9 @@ interface Perfil {
   id: number;
   nome: string;
   responsavel?: string;
+  responsavelRole?: string;
+  canEdit?: boolean;
+  canDelete?: boolean;
   exames: Exame[];
 }
 
@@ -67,11 +70,70 @@ export class GerenciaPerfil implements OnInit {
         return;
       }
 
-      const grupos = resGrupo.dados;
+      let grupos = resGrupo.dados;
 
-      if (grupos.length === 0) {
+      if (!Array.isArray(grupos) || grupos.length === 0) {
         this.carregando = false;
         return;
+      }
+
+      // Determinar unidades do usuário para filtro (null = mostrar todos)
+      let allowedUnits: number[] | null = null;
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser) {
+        // usar cast para any para lidar com variações legacy de propriedade sem quebrar o tipo User
+        const idUnidade = (currentUser as any).idUnidade ?? (currentUser as any).IdUnidade ?? (currentUser as any).ID_UNIDADE ?? null;
+        if (idUnidade === 0) {
+          allowedUnits = null; // consolidador
+        } else if (idUnidade != null) {
+          allowedUnits = [Number(idUnidade)];
+        }
+      }
+
+      if (allowedUnits === null) {
+        const unidadesRaw = localStorage.getItem('unidadesUsuario');
+        if (unidadesRaw) {
+          try {
+            const arr = JSON.parse(unidadesRaw) as any[];
+            const ids = arr
+              .map((u) => u.IdUnidade ?? u.idUnidade ?? u.iD_UNIDADE ?? u.ID_UNIDADE ?? u.id)
+              .filter((x) => x != null)
+              .map(Number);
+            if (ids.length > 0) {
+              // se a lista de unidades do usuário contém 0, ele é consolidador -> mostrar todos
+              if (ids.includes(0)) {
+                allowedUnits = null;
+              } else {
+                allowedUnits = ids;
+              }
+            }
+          } catch (e) {
+            // manter null -> mostrar todos
+          }
+        }
+      }
+
+      // Se allowedUnits for não-nulo, filtrar grupos que possuem associação com as unidades do usuário
+      if (allowedUnits !== null) {
+        const filtrados = await Promise.all(
+          grupos.map(async (grupo: any) => {
+            const idGrupo = grupo.iD_GRUPO_EXAME || grupo.ID_GRUPO_EXAME;
+            try {
+              const res = await this.http
+                .get<any>(`${this.apiUrl}/unidade-grupo-mestre?idGrupo=${idGrupo}`)
+                .toPromise();
+              const unidadesAssoc = (res.dados || [])
+                .map((u: any) => u.iD_UNIDADE || u.ID_UNIDADE)
+                .filter((x: any) => x != null)
+                .map(Number);
+              const has = unidadesAssoc.some((u: number) => allowedUnits!.includes(u));
+              return has ? grupo : null;
+            } catch (e) {
+              return null;
+            }
+          })
+        );
+        grupos = filtrados.filter((g: any) => g !== null);
       }
 
       // 2. Busca IDs únicos de exames de todos os grupos
@@ -178,8 +240,95 @@ export class GerenciaPerfil implements OnInit {
       // Aguarda TODAS as requisições terminarem
       forkJoin<Perfil[]>(requests).subscribe({
         next: (perfisCarregados: Perfil[]) => {
-          this.perfis = perfisCarregados;
+          // Initialize defaults (permissive until we resolve owner roles)
+          this.perfis = perfisCarregados.map(p => ({ ...p, responsavelRole: '', canEdit: undefined as any as boolean | undefined, canDelete: undefined as any as boolean | undefined }));
           this.carregando = false;
+
+          // Fetch usuarios to try to determine responsavel roles by name AND consult UnidadeGrupoMestre as fallback
+          this.usuarioService.buscarUsuarios().subscribe({
+            next: (usuarios) => {
+              const map = new Map<string, string>();
+              usuarios.forEach(u => map.set((u.nome || '').toLowerCase().trim(), (u.role || '').toUpperCase()));
+
+              const currentRole = (this.authService.getRole() || '').toUpperCase();
+
+              // For each perfil, try to determine creator role from UnidadeGrupoMestre first, then fallback to name mapping
+              this.perfis.forEach(p => {
+                // default
+                let respRole = '';
+
+                // 1) try UnidadeGrupoMestre -> API returns dados array, we take first with USUARIO_CRIACAO
+                this.http.get<any>(`${this.apiUrl}/unidade-grupo-mestre?idGrupo=${p.id}`).subscribe({
+                  next: (resUGM) => {
+                    const arr = (resUGM.dados || []);
+                    const first = arr.find((x: any) => x && (x.USUARIO_CRIACAO || x.usuarioCriacao));
+                    const creatorId = first ? (first.USUARIO_CRIACAO || first.usuarioCriacao) : null;
+
+                    if (creatorId) {
+                      // fetch user by id to get role
+                      this.usuarioService.buscarUsuarioPorId(Number(creatorId)).subscribe({
+                        next: (u) => {
+                          respRole = (u?.role || '').toUpperCase() || '';
+                          p.responsavelRole = respRole;
+                          // Apply rule: USERS cannot edit/delete profiles created by ADMIN
+                          if (currentRole === 'USER' && respRole === 'ADMIN') {
+                            p.canEdit = false;
+                            p.canDelete = false;
+                          } else {
+                            p.canEdit = true;
+                            p.canDelete = true;
+                          }
+                        },
+                        error: () => {
+                          // fallback to name-mapping below if user fetch fails
+                          const respName = (p.responsavel || '').toLowerCase().trim();
+                          respRole = map.get(respName) || '';
+                          p.responsavelRole = respRole;
+                          if (currentRole === 'USER' && respRole === 'ADMIN') {
+                            p.canEdit = false;
+                            p.canDelete = false;
+                          } else {
+                            p.canEdit = true;
+                            p.canDelete = true;
+                          }
+                        }
+                      });
+                    } else {
+                      // No creator info in UnidadeGrupoMestre, fallback to name-based mapping
+                      const respName = (p.responsavel || '').toLowerCase().trim();
+                      respRole = map.get(respName) || '';
+                      p.responsavelRole = respRole;
+                      if (currentRole === 'USER' && respRole === 'ADMIN') {
+                        p.canEdit = false;
+                        p.canDelete = false;
+                      } else {
+                        p.canEdit = true;
+                        p.canDelete = true;
+                      }
+                    }
+                  },
+                  error: () => {
+                    // On error, fallback to name-based mapping
+                    const respName = (p.responsavel || '').toLowerCase().trim();
+                    respRole = map.get(respName) || '';
+                    p.responsavelRole = respRole;
+                    if (currentRole === 'USER' && respRole === 'ADMIN') {
+                      p.canEdit = false;
+                      p.canDelete = false;
+                    } else {
+                      p.canEdit = true;
+                      p.canDelete = true;
+                    }
+                  }
+                });
+
+              });
+
+            },
+            error: () => {
+              // If we can't determine roles, keep permissive defaults
+            }
+          });
         },
         error: () => {
           this.erro = 'Erro ao carregar perfis completos.';
@@ -235,10 +384,19 @@ export class GerenciaPerfil implements OnInit {
   }
 
   editarPerfil(perfil: Perfil): void {
+    if (perfil.canEdit === false) {
+      alert('Você não tem permissão para editar este perfil.');
+      return;
+    }
     this.router.navigate(['/perfil/editar', perfil.id]);
   }
 
   excluirPerfil(perfil: Perfil): void {
+    if (perfil.canDelete === false) {
+      alert('Você não tem permissão para excluir este perfil.');
+      return;
+    }
+
     if (!confirm(`Deseja realmente excluir o perfil "${perfil.nome}"?`)) {
       return;
     }

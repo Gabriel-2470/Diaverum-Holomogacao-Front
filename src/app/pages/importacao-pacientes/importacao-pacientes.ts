@@ -44,6 +44,7 @@ interface PacienteUI {
   menuAberto?: boolean;
   exames?: ExameDetalhado[];
   podeEditar?: boolean; // false quando status = 'enviado'
+  nomePerfil?: string; // Nome do perfil de exames
 }
 
 interface ErroImportacao {
@@ -79,13 +80,20 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   termoBusca = '';
 
+  // Filtros avançados
+  filtroStatus: 'todos' | 'enviados' | 'pendentes' = 'todos';
+  filtroTipoData: 'cadastro' | 'coleta' = 'cadastro';
+  filtroDataInicio: string = '';
+  filtroDataFim: string = '';
+  mostrarFiltrosAvancados = false;
+
   perfisExames: PerfilExameUI[] = [];
   unidades: Unidade[] = [];
   // Se definido, mostrará apenas pacientes relacionados a essa unidade (definido pela unidade do usuário)
   mostrarApenasUnidadeId: number | null = null;
   pacientes: PacienteUI[] = [];
   todosPacientes: PacienteUI[] = []; // Todos os pacientes sem paginação
-  pacientesSelecionados: Set<number> = new Set(); // IDs dos pacientes selecionados
+  pacientesSelecionados: Set<string> = new Set(); // CPFs dos pacientes selecionados
 
   // Paginação
   paginaAtual = 1;
@@ -109,10 +117,18 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   pacienteEditandoExames: PacienteUI | null = null;
   examesEditandoTemp: ExameDetalhado[] = [];
   examesEncontrados: any[] = [];
-  buscaExame = '';
+  buscaExame = ''; // mantido para compatibilidade
+  buscaExameCodigo = '';
+  buscaExameNome = '';
   carregandoExames = false;
   salvandoExames = false;
   timeoutBusca: any = null;
+  
+  // Paginação de exames no modal (scroll infinito)
+  paginaExames = 1;
+  tamanhoPaginaExames = 20;
+  totalExamesDisponiveis = 0;
+  carregandoMaisExames = false;
 
   // Erros de Importação
   mostrarModalErros = false;
@@ -229,56 +245,348 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   /**
-   * Carrega pacientes com seus agendamentos e exames do banco
+   * Carrega pacientes usando o método legado (3 chamadas: pacientes, agendamentos, detalhes)
+   * Este método usa endpoints que não requerem autenticação extra
    */
   carregarPacientesComAgendamentos(): void {
-    this.carregando = true;
-    // Primeiro buscar pacientes, agendamentos e detalhes
-    console.log('ImportacaoPacientes.carregarPacientesComAgendamentos -> currentUser/localStorage keys:', {
-      currentUser: (() => { try { return JSON.parse(localStorage.getItem('currentUser')||'null'); } catch { return null; } })(),
-      unidadeSelecionada: (() => { try { return JSON.parse(localStorage.getItem('unidadeSelecionada')||'null'); } catch { return null; } })(),
-      unidadesUsuario: (() => { try { return JSON.parse(localStorage.getItem('unidadesUsuario')||'null'); } catch { return null; } })(),
-      mostrarApenasUnidadeId: this.mostrarApenasUnidadeId
+    // Usar diretamente o método legado que funciona
+    this.carregarPacientesLegado();
+  }
+
+  /**
+   * Processa os dados vindos da VIEW e agrupa por paciente
+   * @deprecated Mantido para uso futuro quando VIEW estiver funcionando
+   */
+  private processarDadosDaView(dados: any[]): void {
+    // Agrupar por CPF do paciente
+    const pacientesPorCpf = new Map<string, any[]>();
+    
+    dados.forEach((registro: any) => {
+      const cpf = registro.cpF_PACIENTE || registro.CPF_PACIENTE || '';
+      if (!cpf) return;
+      
+      if (!pacientesPorCpf.has(cpf)) {
+        pacientesPorCpf.set(cpf, []);
+      }
+      pacientesPorCpf.get(cpf)!.push(registro);
     });
 
-    Promise.all([
-      this.pacienteService.buscarPacientes(1, 1000, this.mostrarApenasUnidadeId).toPromise(),
-      this.pacienteService.buscarAgendamentos(this.mostrarApenasUnidadeId).toPromise(),
-      this.pacienteService.buscarAgendaDetalhes(this.mostrarApenasUnidadeId).toPromise(),
-    ])
-    .then(async ([pacientesRes, agendamentosRes, detalhesRes]: any[]) => {
-        const pacientes = pacientesRes?.dados || pacientesRes || [];
-        const agendamentos = agendamentosRes?.dados || agendamentosRes || [];
-        const detalhes = detalhesRes?.dados || detalhesRes || [];
 
-        // Extrair IDs únicos dos exames necessários
-        const idsExamesNecessarios = new Set<number>();
-        detalhes.forEach((d: any) => {
-          const idExame = d.iD_EXAME || d.ID_EXAME;
-          if (idExame) idsExamesNecessarios.add(idExame);
-        });
+    // Transformar em PacienteUI[]
+    const pacientesUI: PacienteUI[] = [];
+    let idContador = 1; // Contador para garantir IDs únicos
+    
+    pacientesPorCpf.forEach((registros, cpf) => {
+      const primeiro = registros[0];
+      
+      // Mapear todos os exames do paciente
+      const examesDetalhados: ExameDetalhado[] = registros.map((reg: any) => ({
+        iD_EXAME: reg.iD_EXAME || reg.ID_EXAME,
+        desC_EXAME: reg.desC_EXAME || reg.DESC_EXAME || reg.dS_EXAME || reg.DS_EXAME || `Exame ${reg.iD_EXAME}`,
+        cD_EXAME_DB: reg.cD_EXAME_DB || reg.CD_EXAME_DB || reg.cD_EXAME || reg.CD_EXAME || '',
+        iD_GRUPO_EXAME: reg.iD_GRUPO_EXAME || reg.ID_GRUPO_EXAME || null,
+        sigla: reg.sigla || reg.SIGLA || '',
+        material: reg.material || reg.MATERIAL || 'Soro',
+      })).filter((ex: ExameDetalhado, index: number, self: ExameDetalhado[]) => 
+        // Remove duplicados por ID_EXAME
+        index === self.findIndex(e => e.iD_EXAME === ex.iD_EXAME)
+      );
 
-        // Buscar APENAS os exames necessários (pelo ID)
-        const examesNecessarios = await this.buscarExamesPorIds(Array.from(idsExamesNecessarios));
-        this.processarPacientesComExames(pacientes, agendamentos, detalhes, examesNecessarios);
-      })
-      .catch((erro: any) => {
+      // Verificar se todos exames foram enviados
+      const todosEnviados = registros.every((reg: any) => {
+        const enviado = reg.inD_REG_ENVIADO ?? reg.IND_REG_ENVIADO ?? false;
+        return enviado === true || enviado === 1;
+      });
+
+      // Normalizar diabetes
+      let diabetesBoolean = false;
+      const diabetesValue = primeiro.diabetes || primeiro.DIABETES;
+      if (typeof diabetesValue === 'boolean') {
+        diabetesBoolean = diabetesValue;
+      } else if (typeof diabetesValue === 'string') {
+        diabetesBoolean = ['sim', 's', 'true', '1', 'yes', 'y'].includes(diabetesValue.toLowerCase().trim());
+      } else if (typeof diabetesValue === 'number') {
+        diabetesBoolean = diabetesValue === 1;
+      }
+
+      // Data do agendamento
+      const dataAgendamento = (
+        primeiro.datA_AGENDAMENTO || 
+        primeiro.DATA_AGENDAMENTO || 
+        primeiro.dataAgendamento ||
+        ''
+      ).split('T')[0];
+
+      // Data de cadastro do agendamento (criação)
+      const dataCadastroRawView =
+        primeiro.datA_CADASTRO_AGENDAMENTO ||
+        primeiro.DATA_CADASTRO_AGENDAMENTO ||
+        primeiro.datA_CADASTRO ||
+        primeiro.DATA_CADASTRO ||
+        primeiro.dataCadastroAgendamento ||
+        primeiro.data_cadastro_agendamento ||
+        '';
+      const dataCadastroView = dataCadastroRawView ? dataCadastroRawView.split('T')[0] : '';
+
+      // Extrair tratamento dos dados do paciente - debug dos campos disponíveis
+      console.log('🔍 Campos disponíveis para tratamento na view:', {
+        TIPO_TRATAMENTO: primeiro.TIPO_TRATAMENTO,
+        tipO_TRATAMENTO: primeiro.tipO_TRATAMENTO,
+        tipoTratamento: primeiro.tipoTratamento,
+        TRATAMENTO: primeiro.TRATAMENTO,
+        tratamento: primeiro.tratamento,
+        'tipo tratamento': primeiro['tipo tratamento'],
+        'Tipo Tratamento': primeiro['Tipo Tratamento'],
+        'TIPO TRATAMENTO': primeiro['TIPO TRATAMENTO'],
+        allKeys: Object.keys(primeiro).filter(key => key.toLowerCase().includes('tratamento'))
+      });
+
+      // Extrair tratamento dos dados do paciente
+      const tratamento = 
+        primeiro.TIPO_TRATAMENTO ||
+        primeiro.tipO_TRATAMENTO ||
+        primeiro.tipoTratamento ||
+        primeiro.TRATAMENTO ||
+        primeiro.tratamento ||
+        primeiro['tipo tratamento'] ||
+        primeiro['Tipo Tratamento'] ||
+        primeiro['TIPO TRATAMENTO'] ||
+        primeiro['Tipo de Tratamento'] ||
+        primeiro['TIPO DE TRATAMENTO'] ||
+        primeiro['tipo_tratamento'] ||
+        '';
+
+      // Obter nome do perfil baseado no ID_GRUPO_EXAME do primeiro exame
+      const idGrupoPerfil = examesDetalhados[0]?.iD_GRUPO_EXAME;
+      const nomePerfil = idGrupoPerfil 
+        ? (this.perfisExames.find(p => p.iD_GRUPO_EXAME === idGrupoPerfil)?.desC_GRUPO_EXAME || 
+           primeiro.desC_GRUPO_EXAME || primeiro.DESC_GRUPO_EXAME || '')
+        : (primeiro.desC_GRUPO_EXAME || primeiro.DESC_GRUPO_EXAME || '');
+
+      pacientesUI.push({
+        id: primeiro.iD_AGENDAMENTO || primeiro.ID_AGENDAMENTO || primeiro.iD_PACIENTE || primeiro.ID_PACIENTE || idContador++,
+        data: dataCadastroView || dataAgendamento,
+        nome: primeiro.nomE_PACIENTE || primeiro.NOME_PACIENTE || '',
+        cpf: cpf,
+        diabetes: diabetesBoolean,
+        tratamento: tratamento, // Extraído dos dados do backend
+        horarioColeta: dataAgendamento,
+        status: todosEnviados ? 'enviado' : 'correto',
+        expandido: false,
+        exames: examesDetalhados,
+        podeEditar: !todosEnviados,
+        nomePerfil: nomePerfil,
+      });
+    });
+
+    // Ordenar por data de agendamento (mais recente primeiro)
+    pacientesUI.sort((a, b) => {
+      if (!a.data && !b.data) return 0;
+      if (!a.data) return 1;
+      if (!b.data) return -1;
+      return b.data.localeCompare(a.data);
+    });
+
+    this.todosPacientes = pacientesUI;
+    this.pacientes = this.todosPacientes.slice(0, this.itensPorPagina);
+    
+    // Debug: mostrar todos os CPFs carregados (processarDadosDaView)
+    console.log('📋 [processarDadosDaView] CPFs carregados:', this.todosPacientes.map(p => ({ cpf: p.cpf, nome: p.nome, status: p.status })));
+    
+    this.pacientesSelecionados.clear();
+    this.paginaAtual = 1;
+    this.atualizarPaginasVisiveis();
+    this.atualizarPacientesDaPagina();
+
+    console.log('✅ Pacientes processados:', this.todosPacientes.length);
+  }
+
+  /**
+   * Carrega pacientes usando o endpoint /api/agenda-detalhe que já traz tudo consolidado
+   * (paciente, agendamento, exames em uma única query JOIN)
+   */
+  carregarPacientesLegado(): void {
+    this.carregando = true;
+    console.log('📍 Carregando dados - idUnidade:', this.mostrarApenasUnidadeId);
+
+    // O endpoint /api/agenda-detalhe já traz tudo junto (paciente + agendamento + exames)
+    this.pacienteService.buscarAgendaDetalhes(this.mostrarApenasUnidadeId).subscribe({
+      next: (response: any) => {
+        const detalhes = response?.dados || response || [];
+        console.log('✅ Detalhes retornados:', detalhes.length);
+        
+        if (detalhes.length > 0) {
+          console.log('📋 Exemplo de registro:', JSON.stringify(detalhes[0], null, 2));
+        }
+        
+        this.processarDetalhesConsolidados(detalhes);
+        this.carregando = false;
+      },
+      error: (erro: any) => {
         this.carregando = false;
         this.pacientes = [];
         this.todosPacientes = [];
-
-        // Tratar 403 explicitamente para avisar ao usuário que não tem acesso à unidade
-        const status = erro?.status ?? (erro?.statusCode ?? null);
-        if (status === 403) {
-          alert('Você não tem permissão para ver os pacientes desta unidade. Verifique seu perfil ou entre em contato com o administrador.');
-        } else {
-          console.error('Erro ao carregar pacientes/agendamentos/detalhes:', erro);
+        console.error('Erro ao carregar detalhes:', erro);
+        
+        if (erro?.status === 403) {
+          alert('Você não tem permissão para ver os pacientes desta unidade.');
         }
+      }
+    });
+  }
+
+  /**
+   * Processa os detalhes consolidados do endpoint /api/agenda-detalhe
+   * Agrupa por CPF e monta a estrutura PacienteUI
+   */
+  private processarDetalhesConsolidados(detalhes: any[]): void {
+    // Agrupar por CPF do paciente
+    const pacientesPorCpf = new Map<string, any[]>();
+    
+    detalhes.forEach((registro: any) => {
+      const cpf = registro.cpF_PACIENTE || registro.CPF_PACIENTE || '';
+      if (!cpf) return;
+      
+      if (!pacientesPorCpf.has(cpf)) {
+        pacientesPorCpf.set(cpf, []);
+      }
+      pacientesPorCpf.get(cpf)!.push(registro);
+    });
+
+    // Transformar em PacienteUI[]
+    const pacientesUI: PacienteUI[] = [];
+    let idContador = 1; // Contador para garantir IDs únicos
+    
+    pacientesPorCpf.forEach((registros, cpf) => {
+      const primeiro = registros[0];
+      
+      // Mapear todos os exames do paciente (sem duplicatas)
+      const examesDetalhados: ExameDetalhado[] = [];
+      registros.forEach((reg: any) => {
+        const idExame = reg.iD_EXAME || reg.ID_EXAME;
+        if (!idExame) return;
+        
+        // Verificar se já foi adicionado
+        if (examesDetalhados.some(e => e.iD_EXAME === idExame)) return;
+        
+        examesDetalhados.push({
+          iD_EXAME: idExame,
+          desC_EXAME: reg.desC_EXAME || reg.DESC_EXAME || reg.dS_EXAME || reg.DS_EXAME || `Exame ${idExame}`,
+          cD_EXAME_DB: reg.cD_EXAME_DB || reg.CD_EXAME_DB || reg.cD_EXAME || reg.CD_EXAME || '',
+          iD_GRUPO_EXAME: reg.iD_GRUPO_EXAME || reg.ID_GRUPO_EXAME || null,
+          sigla: reg.sigla || reg.SIGLA || '',
+          material: reg.material || reg.MATERIAL || 'Soro',
+        });
       });
+
+      // Verificar se todos exames foram enviados
+      const todosEnviados = registros.every((reg: any) => {
+        const enviado = reg.inD_REG_ENVIADO ?? reg.IND_REG_ENVIADO ?? false;
+        return enviado === true || enviado === 1;
+      });
+
+      // Normalizar diabetes
+      let diabetesBoolean = false;
+      const diabetesValue = primeiro.diabetes || primeiro.DIABETES;
+      if (typeof diabetesValue === 'boolean') {
+        diabetesBoolean = diabetesValue;
+      } else if (typeof diabetesValue === 'string') {
+        diabetesBoolean = ['sim', 's', 'true', '1', 'yes', 'y'].includes(diabetesValue.toLowerCase().trim());
+      } else if (typeof diabetesValue === 'number') {
+        diabetesBoolean = diabetesValue === 1;
+      }
+
+      // Data do agendamento (já vem no JOIN)
+      const dataAgendamentoRaw = primeiro.datA_AGENDAMENTO || primeiro.DATA_AGENDAMENTO || primeiro.dataAgendamento || '';
+      const dataAgendamento = dataAgendamentoRaw ? dataAgendamentoRaw.split('T')[0] : '';
+
+      // Data de cadastro do agendamento (criação) - preferir esta para o campo `data`
+      const dataCadastroRaw =
+        primeiro.datA_CADASTRO_AGENDAMENTO ||
+        primeiro.DATA_CADASTRO_AGENDAMENTO ||
+        primeiro.datA_CADASTRO ||
+        primeiro.DATA_CADASTRO ||
+        primeiro.dataCadastroAgendamento ||
+        primeiro.data_cadastro_agendamento ||
+        '';
+      const dataCadastro = dataCadastroRaw ? dataCadastroRaw.split('T')[0] : '';
+
+      // Extrair tratamento dos dados do paciente - debug dos campos disponíveis
+      console.log('🔍 Campos disponíveis para tratamento no primeiro registro:', {
+        TIPO_TRATAMENTO: primeiro.TIPO_TRATAMENTO,
+        tipO_TRATAMENTO: primeiro.tipO_TRATAMENTO,
+        tipoTratamento: primeiro.tipoTratamento,
+        TRATAMENTO: primeiro.TRATAMENTO,
+        tratamento: primeiro.tratamento,
+        'tipo tratamento': primeiro['tipo tratamento'],
+        'Tipo Tratamento': primeiro['Tipo Tratamento'],
+        'TIPO TRATAMENTO': primeiro['TIPO TRATAMENTO'],
+        allKeys: Object.keys(primeiro).filter(key => key.toLowerCase().includes('tratamento'))
+      });
+
+      const tratamento = 
+        primeiro.TIPO_TRATAMENTO ||
+        primeiro.tipO_TRATAMENTO ||
+        primeiro.tipoTratamento ||
+        primeiro.TRATAMENTO ||
+        primeiro.tratamento ||
+        primeiro['tipo tratamento'] ||
+        primeiro['Tipo Tratamento'] ||
+        primeiro['TIPO TRATAMENTO'] ||
+        primeiro['Tipo de Tratamento'] ||
+        primeiro['TIPO DE TRATAMENTO'] ||
+        primeiro['tipo_tratamento'] ||
+        '';
+
+      // Obter nome do perfil baseado no ID_GRUPO_EXAME do primeiro exame
+      const idGrupoPerfil = examesDetalhados[0]?.iD_GRUPO_EXAME;
+      const nomePerfil = idGrupoPerfil 
+        ? (this.perfisExames.find(p => p.iD_GRUPO_EXAME === idGrupoPerfil)?.desC_GRUPO_EXAME || 
+           primeiro.desC_GRUPO_EXAME || primeiro.DESC_GRUPO_EXAME || '')
+        : (primeiro.desC_GRUPO_EXAME || primeiro.DESC_GRUPO_EXAME || '');
+
+      pacientesUI.push({
+        id: primeiro.iD_AGENDAMENTO || primeiro.ID_AGENDAMENTO || primeiro.iD_PACIENTE || primeiro.ID_PACIENTE || idContador++,
+        data: dataCadastro || dataAgendamento,
+        nome: primeiro.nomE_PACIENTE || primeiro.NOME_PACIENTE || '',
+        cpf: cpf,
+        diabetes: diabetesBoolean,
+        tratamento: tratamento,
+        horarioColeta: dataAgendamento,
+        status: todosEnviados ? 'enviado' : 'correto',
+        expandido: false,
+        exames: examesDetalhados,
+        podeEditar: !todosEnviados,
+        nomePerfil: nomePerfil,
+      });
+    });
+
+    // Ordenar por data (mais recente primeiro)
+    pacientesUI.sort((a, b) => {
+      if (!a.data && !b.data) return 0;
+      if (!a.data) return 1;
+      if (!b.data) return -1;
+      return b.data.localeCompare(a.data);
+    });
+
+    this.todosPacientes = pacientesUI;
+    this.pacientes = this.todosPacientes.slice(0, this.itensPorPagina);
+    
+    // Debug: mostrar todos os CPFs carregados (processarDetalhesConsolidados)
+    console.log('📋 [processarDetalhesConsolidados] CPFs carregados:', this.todosPacientes.map(p => ({ cpf: p.cpf, nome: p.nome, status: p.status })));
+    
+    this.pacientesSelecionados.clear();
+    this.paginaAtual = 1;
+    this.atualizarPaginasVisiveis();
+    this.atualizarPacientesDaPagina();
+
+    console.log('✅ Pacientes processados:', this.todosPacientes.length, 'com total de exames:', 
+      this.todosPacientes.reduce((acc, p) => acc + (p.exames?.length || 0), 0));
   }
 
   /**
    * Busca exames específicos pelo ID (usando endpoint direto /exames/{id})
+   * @deprecated Não mais necessário - dados já vêm do JOIN
    */
   private async buscarExamesPorIds(ids: number[]): Promise<any[]> {
     if (ids.length === 0) return [];
@@ -435,6 +743,17 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
             agendamentoEncontrado.DATA_AGENDAMENTO?.split('T')[0] ||
             agendamentoEncontrado.dataAgendamento?.split('T')[0] ||
             '';
+
+          // Preferir data de cadastro (criação) quando disponível
+          const dataCadastroRaw =
+            agendamentoEncontrado.datA_CADASTRO_AGENDAMENTO ||
+            agendamentoEncontrado.DATA_CADASTRO_AGENDAMENTO ||
+            agendamentoEncontrado.datA_CADASTRO ||
+            agendamentoEncontrado.DATA_CADASTRO ||
+            agendamentoEncontrado.dataCadastroAgendamento ||
+            agendamentoEncontrado.data_cadastro_agendamento ||
+            '';
+          var dataCadastroAg = dataCadastroRaw ? dataCadastroRaw.split('T')[0] : '';
         }
       }
 
@@ -446,6 +765,16 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           primeiroAgendamento.DATA_AGENDAMENTO?.split('T')[0] ||
           primeiroAgendamento.dataAgendamento?.split('T')[0] ||
           '';
+
+        const dataCadastroRaw =
+          primeiroAgendamento.datA_CADASTRO_AGENDAMENTO ||
+          primeiroAgendamento.DATA_CADASTRO_AGENDAMENTO ||
+          primeiroAgendamento.datA_CADASTRO ||
+          primeiroAgendamento.DATA_CADASTRO ||
+          primeiroAgendamento.dataCadastroAgendamento ||
+          primeiroAgendamento.data_cadastro_agendamento ||
+          '';
+        var dataCadastroAg = dataCadastroRaw ? dataCadastroRaw.split('T')[0] : '';
       }
 
       // ✅ Verificar se TODOS os exames do paciente já foram enviados (IND_REG_ENVIADO = 1)
@@ -458,7 +787,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
       return {
         id: p.iD_PACIENTE || p.id,
-        data: dataAgendamento,
+        data: dataCadastroAg || dataAgendamento,
         nome: p.nome || p.NOME || '',
         cpf: cpfPaciente || '',
         diabetes: diabetesBoolean,
@@ -529,21 +858,88 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   carregarPerfis(): void {
     this.carregando = true;
     this.gruposExamesService.getPerfis().subscribe({
-      next: (perfis: GrupoExamePerfilExame[]) => {
-        this.perfisExames = perfis.map((p) => ({
-          id: p.iD_GRUPO_EXAME,
-          nome: p.desC_GRUPO_EXAME,
-          qtdExames: 0,
-          iD_GRUPO_EXAME: p.iD_GRUPO_EXAME,
-          desC_GRUPO_EXAME: p.desC_GRUPO_EXAME,
-        }));
+      next: async (perfis: GrupoExamePerfilExame[]) => {
+        try {
+          // Determinar unidades do usuário para filtro
+          let allowedUnits: number[] | null = null; // null = mostrar todos
 
-        // Carregar quantidade de exames para cada perfil
-        this.perfisExames.forEach((perfil) => {
-          this.carregarQtdExames(perfil);
-        });
+          if (this.mostrarApenasUnidadeId != null) {
+            if (this.mostrarApenasUnidadeId === 0) {
+              // Usuário consolidador: ver todos os perfis
+              allowedUnits = null;
+            } else {
+              allowedUnits = [this.mostrarApenasUnidadeId];
+            }
+          } else {
+            const unidadesRaw = localStorage.getItem('unidadesUsuario');
+            if (unidadesRaw) {
+              try {
+                const arr = JSON.parse(unidadesRaw) as any[];
+                const ids = arr
+                  .map((u) => u.IdUnidade ?? u.idUnidade ?? u.iD_UNIDADE ?? u.ID_UNIDADE ?? u.id)
+                  .filter((x) => x != null)
+                  .map(Number);
+                if (ids.length > 0) {
+                  // Se o usuário tiver a unidade 0 entre as unidades, ele é consolidador -> mostrar todos
+                  if (ids.includes(0)) {
+                    allowedUnits = null;
+                  } else {
+                    allowedUnits = ids;
+                  }
+                } else {
+                  allowedUnits = null;
+                }
+              } catch (e) {
+                allowedUnits = null;
+              }
+            } else {
+              allowedUnits = null;
+            }
+          }
 
-        this.carregando = false;
+          const mapped = perfis.map((p) => ({
+            id: p.iD_GRUPO_EXAME,
+            nome: p.desC_GRUPO_EXAME,
+            qtdExames: 0,
+            iD_GRUPO_EXAME: p.iD_GRUPO_EXAME,
+            desC_GRUPO_EXAME: p.desC_GRUPO_EXAME,
+          }));
+
+          if (allowedUnits === null) {
+            // Sem filtro: carregar todos os perfis
+            this.perfisExames = mapped;
+          } else {
+            // Filtrar perfis por associação em UnidadeGrupoMestre
+            const checks = await Promise.all(
+              mapped.map(async (perfil) => {
+                try {
+                  const res = await this.http
+                    .get<any>(`${environment.apiUrl}/unidade-grupo-mestre?idGrupo=${perfil.id}`)
+                    .toPromise();
+                  const unidadesAssoc = (res.dados || [])
+                    .map((u: any) => u.iD_UNIDADE || u.ID_UNIDADE)
+                    .filter((x: any) => x != null)
+                    .map(Number);
+                  const has = unidadesAssoc.some((u: number) => allowedUnits!.includes(u));
+                  return has ? perfil : null;
+                } catch (e) {
+                  return null;
+                }
+              })
+            );
+
+            this.perfisExames = checks.filter((p): p is PerfilExameUI => p !== null);
+          }
+
+          // Carregar quantidade de exames para cada perfil visível
+          this.perfisExames.forEach((perfil) => {
+            this.carregarQtdExames(perfil);
+          });
+        } catch (e) {
+          // Ignora erros neste fluxo
+        } finally {
+          this.carregando = false;
+        }
       },
       error: (erro: any) => {
         this.carregando = false;
@@ -955,7 +1351,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.transferindo = true;
     this.progressoTransferencia = { atual: 0, total: pacientes.length };
 
-    // Marcar todos como pendente (amarelo) enquanto processa
+    // Marcar todos como pendente (amarelo) durante o processamento da transferência
     pacientes.forEach((paciente) => {
       paciente.status = 'pendente';
     });
@@ -972,10 +1368,10 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
             const paciente = pacientes.find((p) => p.cpf === resultado.cpf);
             if (paciente) {
               if (resultado.enviado || resultado.sucesso) {
-                paciente.status = 'enviado'; // Verde
+                paciente.status = 'enviado'; // Verde = Transferido
                 paciente.podeEditar = false;
               } else {
-                paciente.status = 'erro'; // Vermelho
+                paciente.status = 'erro'; // Vermelho = Erro(s)
               }
             }
             // Atualizar progresso
@@ -1014,7 +1410,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         this.pacientesSelecionados.clear();
       },
       error: (err: any) => {
-        // Marcar todos como erro (vermelho)
+        // Marcar todos como erro (vermelho = Erro(s))
         pacientes.forEach((paciente) => {
           paciente.status = 'erro';
         });
@@ -1029,7 +1425,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   getPacientesSelecionados() {
-    return this.todosPacientes.filter((p) => this.pacientesSelecionados.has(p.id));
+    return this.todosPacientes.filter((p) => this.pacientesSelecionados.has(p.cpf));
   }
 
   excluirPacientesSelecionados(): void {
@@ -1039,34 +1435,35 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     const qtdAntes = this.quantidadeSelecionados;
     const confirmacao = confirm(
-      `Deseja realmente excluir ${qtdAntes} paciente${qtdAntes > 1 ? 's' : ''} selecionado${
+      `Deseja realmente remover os exames de ${qtdAntes} paciente${qtdAntes > 1 ? 's' : ''} selecionado${
         qtdAntes > 1 ? 's' : ''
-      } do banco de dados?`
+      }?\n\nOs pacientes sem exames não aparecerão mais na listagem.`
     );
 
     if (confirmacao) {
-      const idsParaRemover = Array.from(this.pacientesSelecionados);
+      const cpfsParaRemover = Array.from(this.pacientesSelecionados);
 
       // Ativar estado de carregamento
       this.excluindoEmMassa = true;
-      this.progressoExclusao = { atual: 0, total: idsParaRemover.length };
+      this.progressoExclusao = { atual: 0, total: cpfsParaRemover.length };
 
-      // Excluir todos os pacientes em uma única requisição (muito mais rápido!)
-      this.pacienteService.excluirPacientesEmLote(idsParaRemover).subscribe({
+      // Remover pacientes por CPF (soft delete)
+      this.pacienteService.removerPacientesPorCpf(cpfsParaRemover).subscribe({
         next: (resultado: any) => {
-          this.finalizarExclusao(idsParaRemover, resultado.excluidos || idsParaRemover.length, resultado.erros || 0);
+          this.finalizarExclusao(cpfsParaRemover, resultado.removidos || cpfsParaRemover.length, 0);
         },
         error: (erro: any) => {
-          console.error('Erro ao excluir pacientes em lote:', erro);
-          // Fallback: tentar excluir um por um se o endpoint em lote falhar
-          this.excluirPacientesUmPorUm(idsParaRemover);
+          console.error('Erro ao remover pacientes:', erro);
+          this.excluindoEmMassa = false;
+          this.progressoExclusao = { atual: 0, total: 0 };
+          alert('Erro ao remover pacientes. Tente novamente.');
         },
       });
     }
   }
 
-  // Fallback caso o endpoint em lote não funcione
-  private excluirPacientesUmPorUm(idsParaRemover: number[]): void {
+  // Fallback caso o endpoint em lote não funcione (não mais usado, mantido para compatibilidade)
+  private excluirPacientesUmPorUm(idsParaRemover: number[], cpfsParaRemover: string[]): void {
     let excluidos = 0;
     let erros = 0;
 
@@ -1077,7 +1474,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           this.progressoExclusao.atual = excluidos + erros;
 
           if (excluidos + erros === idsParaRemover.length) {
-            this.finalizarExclusao(idsParaRemover, excluidos, erros);
+            this.finalizarExclusao(cpfsParaRemover, excluidos, erros);
           }
         },
         error: () => {
@@ -1085,22 +1482,22 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           this.progressoExclusao.atual = excluidos + erros;
 
           if (excluidos + erros === idsParaRemover.length) {
-            this.finalizarExclusao(idsParaRemover, excluidos, erros);
+            this.finalizarExclusao(cpfsParaRemover, excluidos, erros);
           }
         },
       });
     });
   }
 
-  private finalizarExclusao(idsRemovidos: number[], excluidos: number, erros: number): void {
-    // Filtrar todosPacientes (que usa .id) removendo os selecionados
+  private finalizarExclusao(cpfsRemovidos: string[], excluidos: number, erros: number): void {
+    // Filtrar todosPacientes pelo CPF removendo os selecionados
     this.todosPacientes = this.todosPacientes.filter(
-      (paciente) => !idsRemovidos.includes(paciente.id)
+      (paciente) => !cpfsRemovidos.includes(paciente.cpf)
     );
 
-    // Também remover de dadosExcelParsed (que usa .iD_PACIENTE)
+    // Também remover de dadosExcelParsed pelo CPF (usa CPF maiúsculo)
     this.dadosExcelParsed = this.dadosExcelParsed.filter(
-      (paciente) => !idsRemovidos.includes(paciente.iD_PACIENTE!)
+      (paciente) => !cpfsRemovidos.includes(paciente.CPF || '')
     );
 
     // Limpar seleção
@@ -1117,9 +1514,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     // Mostrar resultado
     if (erros > 0) {
-      alert(`${excluidos} paciente(s) excluído(s) com sucesso.\n${erros} erro(s) ao excluir.`);
+      alert(`Paciente(s) removidos com alguns erros.\n${erros} erro(s) ao remover.`);
     } else {
-      alert(`✅ ${excluidos} paciente(s) excluído(s) com sucesso!`);
+      alert(`✅ Paciente(s) removidos com sucesso!\n${excluidos} exame(s) não aparecerão mais na listagem.`);
     }
   }
 
@@ -1159,9 +1556,12 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     }
 
     // Transformar dados para PacienteUI com status
+    const perfilSelecionadoNome = this.perfisExames.find(p => p.id === this.perfilSelecionado)?.desC_GRUPO_EXAME || '';
+    
     this.pacientes = this.dadosExcelParsed.map((paciente: any, index: number) => ({
       id: index + 1,
-      data: this.dataColetaGlobal,
+      // Data de cadastro prevista (hoje) — será o valor mostrado após import
+      data: new Date().toISOString().split('T')[0],
       nome: paciente.NOME || paciente.nome || '',
       cpf: paciente.CPF || paciente.cpf || '',
       diabetes:
@@ -1169,10 +1569,12 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           ? ['sim', 's', 'Sim'].includes(paciente.DIABETES || paciente.diabetes)
           : (paciente.DIABETES || paciente.diabetes),
       tratamento: paciente.TIPO_TRATAMENTO || paciente.tipO_TRATAMENTO,
-      horarioColeta: '',
+      // Horário/data de coleta deve refletir o agendamento
+      horarioColeta: this.dataColetaGlobal,
       status: null, // Ainda não foi transferido
       expandido: false,
       podeEditar: true,
+      nomePerfil: perfilSelecionadoNome,
     }));
 
     // Sincronizar todosPacientes para que as estatísticas funcionem
@@ -1288,7 +1690,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
               if (this.errosImportacao.length > 0) {
                 console.warn('⚠️ Pacientes com erro na importação:', this.errosImportacao);
               }
-              const idUnidade = this.getUnidade();
+              const idUnidade = unidadesParaProcessar[0];
               if (resultado.sucessos > 0 && idUnidade) {
                 const requestsAgendamento = this.pacienteService
                     .gerarAgendaDetalhe(
@@ -1437,24 +1839,27 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       return;
     }
 
-    // Chama a API de DELETE
-    this.pacienteService.excluirPaciente(paciente.id).subscribe({
-      next: () => {
-        // Remove da lista local
-        const index = this.todosPacientes.findIndex((p) => p.id === paciente.id);
-        if (index > -1) {
-          this.todosPacientes.splice(index, 1);
-        }
-        // Ajustar página se necessário
+    // Usar a mesma lógica de remoção por CPF (soft delete) usada na exclusão em massa
+    const cpfsParaRemover = [paciente.cpf];
+    this.pacienteService.removerPacientesPorCpf(cpfsParaRemover).subscribe({
+      next: (resultado: any) => {
+        // Remover localmente pelo CPF
+        this.todosPacientes = this.todosPacientes.filter((p) => p.cpf !== paciente.cpf);
+
+        // Também remover de dadosExcelParsed pelo CPF (usa CPF maiúsculo)
+        this.dadosExcelParsed = this.dadosExcelParsed.filter((p) => (p.CPF || '') !== paciente.cpf);
+
+        // Ajustar pagina se necessário
         if (this.paginaAtual > this.totalPaginas && this.totalPaginas > 0) {
           this.paginaAtual = this.totalPaginas;
         }
         this.atualizarPaginasVisiveis();
-        alert('Paciente excluído com sucesso!');
+
+        alert('Paciente removido da listagem com sucesso!');
       },
       error: (err: any) => {
-        console.error('Erro ao excluir paciente:', err);
-        alert('Erro ao excluir paciente. Tente novamente.');
+        console.error('Erro ao remover paciente:', err);
+        alert('Erro ao remover paciente. Verifique o console para mais detalhes.');
       },
     });
   }
@@ -1494,16 +1899,96 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   /**
-   * Retorna todos os pacientes que correspondem ao filtro de busca (ou todos se não houver busca)
+   * Retorna todos os pacientes que correspondem aos filtros aplicados
    */
   get pacientesBase(): PacienteUI[] {
+    let resultado = this.todosPacientes;
+
+    // Filtro por termo de busca (nome ou CPF)
     if (this.termoBusca.trim()) {
       const termo = this.termoBusca.toLowerCase();
-      return this.todosPacientes.filter(
+      resultado = resultado.filter(
         (p) => p.nome.toLowerCase().includes(termo) || p.cpf.includes(termo)
       );
     }
-    return this.todosPacientes;
+
+    // Filtro por status de envio
+    if (this.filtroStatus === 'enviados') {
+      resultado = resultado.filter((p) => p.status === 'enviado');
+    } else if (this.filtroStatus === 'pendentes') {
+      resultado = resultado.filter((p) => p.status !== 'enviado');
+    }
+
+    // Filtro por data (cadastro OU coleta, conforme selecionado)
+    if (this.filtroDataInicio || this.filtroDataFim) {
+      resultado = resultado.filter((p) => {
+        // Usar o campo correto baseado no tipo selecionado
+        const dataPaciente = this.filtroTipoData === 'cadastro' ? p.data : p.horarioColeta;
+        if (!dataPaciente) return false;
+        
+        const passaInicio = !this.filtroDataInicio || dataPaciente >= this.filtroDataInicio;
+        const passaFim = !this.filtroDataFim || dataPaciente <= this.filtroDataFim;
+        
+        return passaInicio && passaFim;
+      });
+    }
+
+    return resultado;
+  }
+
+  /**
+   * Verifica se há algum filtro ativo além da busca
+   */
+  get temFiltroAtivo(): boolean {
+    return this.filtroStatus !== 'todos' || !!this.filtroDataInicio || !!this.filtroDataFim;
+  }
+
+  /**
+   * Retorna a descrição do filtro de status ativo
+   */
+  get descricaoFiltroStatus(): string {
+    switch (this.filtroStatus) {
+      case 'enviados': return 'Transferidos';
+      case 'pendentes': return 'Pendentes';
+      default: return 'Todos';
+    }
+  }
+
+  /**
+   * Alterna a exibição dos filtros avançados
+   */
+  toggleFiltrosAvancados(): void {
+    this.mostrarFiltrosAvancados = !this.mostrarFiltrosAvancados;
+  }
+
+  /**
+   * Aplica filtro de status e reseta a paginação
+   */
+  aplicarFiltroStatus(status: 'todos' | 'enviados' | 'pendentes'): void {
+    this.filtroStatus = status;
+    this.paginaAtual = 1;
+    this.atualizarPaginasVisiveis();
+  }
+
+  /**
+   * Aplica filtro de data e reseta a paginação
+   */
+  aplicarFiltroData(): void {
+    this.paginaAtual = 1;
+    this.atualizarPaginasVisiveis();
+  }
+
+  /**
+   * Limpa todos os filtros
+   */
+  limparFiltros(): void {
+    this.filtroStatus = 'todos';
+    this.filtroTipoData = 'cadastro';
+    this.filtroDataInicio = '';
+    this.filtroDataFim = '';
+    this.termoBusca = '';
+    this.paginaAtual = 1;
+    this.atualizarPaginasVisiveis();
   }
 
   /**
@@ -1525,8 +2010,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   get estatisticas() {
     const total = this.todosPacientes.length;
     const enviados = this.todosPacientes.filter((p) => p.status === 'enviado').length;
-    const pendentes = this.todosPacientes.filter((p) => p.status === 'pendente').length;
     const erros = this.todosPacientes.filter((p) => p.status === 'erro').length;
+    // Pendentes = pacientes que ainda não foram transferidos E não têm erros
+    const pendentes = this.todosPacientes.filter((p) => p.status === null || p.status === 'correto').length;
 
     return { total, enviados, pendentes, erros };
   }
@@ -1539,8 +2025,22 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
    * Chamado quando o termo de busca muda - reseta para página 1
    */
   onBuscaChange(): void {
+    // Se a busca de pacientes estiver bloqueada por busca de exames, não permitir alteração
+    if (this.isSearchBlocked('paciente')) {
+      return;
+    }
+
     this.paginaAtual = 1;
     this.atualizarPaginasVisiveis();
+  }
+
+  /**
+   * Retorna se um tipo de busca está bloqueando o outro.
+   * Legado: anteriormente uma busca bloqueava a outra; agora permitimos buscas simultâneas.
+   */
+  isSearchBlocked(tipo: 'paciente' | 'exame'): boolean {
+    // Não bloqueia mais — ambas as buscas podem ser usadas simultaneamente
+    return false;
   }
 
   // ==================== MÉTODOS DE PAGINAÇÃO ====================
@@ -1592,37 +2092,47 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   // ==================== MÉTODOS DE SELEÇÃO ====================
 
-  togglePacienteSelecionado(pacienteId: number): void {
+  togglePacienteSelecionado(cpf: string): void {
     // Verifica se o paciente já foi enviado (não pode ser selecionado)
-    const paciente = this.todosPacientes.find(p => p.id === pacienteId);
+    const paciente = this.todosPacientes.find(p => p.cpf === cpf);
     if (paciente?.status === 'enviado') {
       return; // Não permite selecionar pacientes já enviados
     }
 
-    if (this.pacientesSelecionados.has(pacienteId)) {
-      this.pacientesSelecionados.delete(pacienteId);
+    if (this.pacientesSelecionados.has(cpf)) {
+      this.pacientesSelecionados.delete(cpf);
     } else {
-      this.pacientesSelecionados.add(pacienteId);
+      this.pacientesSelecionados.add(cpf);
     }
   }
 
-  isPacienteSelecionado(pacienteId: number): boolean {
-    return this.pacientesSelecionados.has(pacienteId);
+  isPacienteSelecionado(cpf: string): boolean {
+    return this.pacientesSelecionados.has(cpf);
   }
 
   selecionarTodosPacientes(): void {
+    // Debug: verificar dados
+    console.log('🔍 DEBUG selecionarTodos:');
+    console.log('  - todosPacientes.length:', this.todosPacientes.length);
+    console.log('  - pacientesBase.length:', this.pacientesBase.length);
+    console.log('  - Primeiro paciente:', this.pacientesBase[0]);
+    
     // Seleciona apenas os pacientes que estão visíveis e NÃO foram enviados
     this.pacientesBase.forEach((paciente) => {
-      if (paciente.status !== 'enviado') {
-        this.pacientesSelecionados.add(paciente.id);
+      if (paciente.status !== 'enviado' && paciente.cpf) {
+        console.log('  - Adicionando CPF:', paciente.cpf);
+        this.pacientesSelecionados.add(paciente.cpf);
       }
     });
+    
+    console.log('  - Total selecionados:', this.pacientesSelecionados.size);
+    console.log('  - CPFs selecionados:', Array.from(this.pacientesSelecionados));
   }
 
   deselecionarTodosPacientes(): void {
     // Deseleciona apenas os pacientes que estão visíveis (respeitando o filtro)
     this.pacientesBase.forEach((paciente) => {
-      this.pacientesSelecionados.delete(paciente.id);
+      this.pacientesSelecionados.delete(paciente.cpf);
     });
   }
 
@@ -1640,10 +2150,10 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   get todosSelecionados(): boolean {
     // Verifica se todos os pacientes SELECIONÁVEIS (não enviados) do filtro atual estão selecionados
-    const pacientesSelecionaveis = this.pacientesBase.filter(p => p.status !== 'enviado');
+    const pacientesSelecionaveis = this.pacientesBase.filter(p => p.status !== 'enviado' && p.cpf);
     return (
       pacientesSelecionaveis.length > 0 &&
-      pacientesSelecionaveis.every((p) => this.pacientesSelecionados.has(p.id))
+      pacientesSelecionaveis.every((p) => this.pacientesSelecionados.has(p.cpf))
     );
   }
 
@@ -1656,43 +2166,115 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.examesEncontrados = [];
   }
 
-  buscarExamesNoBackend(): void {
+  // Ao digitar no campo de código, limpa o campo de nome e aciona a busca
+  onBuscaExameCodigoChange(valor: string): void {
+    this.buscaExameCodigo = valor || '';
+    if (this.buscaExameNome) {
+      this.buscaExameNome = '';
+    }
+    // Reinicia paginação e resultados, a função buscarExamesNoBackend fará debounce e requisição
+    this.paginaExames = 1;
+    this.buscarExamesNoBackend(true);
+  }
+
+  // Ao digitar no campo de nome, limpa o campo de código e aciona a busca
+  onBuscaExameNomeChange(valor: string): void {
+    this.buscaExameNome = valor || '';
+    if (this.buscaExameCodigo) {
+      this.buscaExameCodigo = '';
+    }
+    this.paginaExames = 1;
+    this.buscarExamesNoBackend(true);
+  }
+
+  buscarExamesNoBackend(resetPagina: boolean = true): void {
     // Limpar timeout anterior
     if (this.timeoutBusca) {
       clearTimeout(this.timeoutBusca);
     }
 
-    const termo = this.buscaExame.trim();
+    const termoCodigo = this.buscaExameCodigo?.trim() || '';
+    const termoNome = this.buscaExameNome?.trim() || '';
 
-    // Se não tiver busca, limpar resultados
-    if (!termo) {
+    // Se a busca de exames estiver bloqueada por busca de pacientes, não executar
+    if (this.isSearchBlocked('exame')) {
       this.examesEncontrados = [];
       this.carregandoExames = false;
+      this.paginaExames = 1;
+      this.totalExamesDisponiveis = 0;
       return;
+    }
+
+    // Se não tiver busca, limpar resultados
+    if (!termoCodigo && !termoNome) {
+      this.examesEncontrados = [];
+      this.carregandoExames = false;
+      this.paginaExames = 1;
+      this.totalExamesDisponiveis = 0;
+      return;
+    }
+
+    // Resetar paginação quando o termo muda
+    if (resetPagina) {
+      this.paginaExames = 1;
+      this.examesEncontrados = [];
     }
 
     // Aguardar 500ms após o usuário parar de digitar
     this.timeoutBusca = setTimeout(() => {
       this.carregandoExames = true;
 
-      // Usar o mesmo parâmetro 'filtro' que o perfil-exame usa
-      const params = new HttpParams()
-        .set('pagina', '1')
-        .set('tamanhoPagina', '10')
-        .set('filtro', termo);
+      let params = new HttpParams()
+        .set('pagina', this.paginaExames.toString())
+        .set('tamanhoPagina', this.tamanhoPaginaExames.toString());
+      
+      if (termoCodigo) {
+        params = params.set('filtroCodigo', termoCodigo);
+      }
+      if (termoNome) {
+        params = params.set('filtroNome', termoNome);
+      }
 
       this.http.get<any>(`${environment.apiUrl}/exames`, { params }).subscribe({
         next: (response) => {
-          this.examesEncontrados = response.dados || response || [];
+          const novosExames = response.dados || response || [];
+          if (resetPagina || this.paginaExames === 1) {
+            this.examesEncontrados = novosExames;
+          } else {
+            this.examesEncontrados = [...this.examesEncontrados, ...novosExames];
+          }
+          this.totalExamesDisponiveis = response.paginacao?.totalRegistros || novosExames.length;
           this.carregandoExames = false;
+          this.carregandoMaisExames = false;
         },
         error: (erro) => {
           console.error('Erro ao buscar exames:', erro);
           this.examesEncontrados = [];
           this.carregandoExames = false;
+          this.carregandoMaisExames = false;
         },
       });
-    }, 500); // Debounce de 500ms
+    }, resetPagina ? 500 : 0); // Debounce apenas na primeira busca
+  }
+
+  carregarMaisExames(): void {
+    if (this.carregandoMaisExames || this.carregandoExames) return;
+    
+    // Verificar se há mais exames para carregar
+    if (this.examesEncontrados.length >= this.totalExamesDisponiveis) return;
+    
+    this.carregandoMaisExames = true;
+    this.paginaExames++;
+    this.buscarExamesNoBackend(false);
+  }
+
+  onScrollExames(event: Event): void {
+    const element = event.target as HTMLElement;
+    const threshold = 100; // pixels antes do fim para carregar
+    
+    if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+      this.carregarMaisExames();
+    }
   }
 
   get examesFiltrados(): any[] {
@@ -1700,14 +2282,21 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   exameJaAdicionado(idExame: number): boolean {
-    return this.examesEditandoTemp.some((e) => e.iD_EXAME === idExame);
+    if (!idExame) return false;
+    return this.examesEditandoTemp.some((e) => (e.iD_EXAME || (e as any).ID_EXAME) === idExame);
   }
 
   adicionarExameTemp(exame: any): void {
+    const idExame = exame.iD_EXAME || exame.ID_EXAME;
+    if (!idExame) {
+      console.warn('Exame sem ID válido:', exame);
+      return;
+    }
+    
     const novoExame: ExameDetalhado = {
-      iD_EXAME: exame.iD_EXAME || exame.ID_EXAME,
-      desC_EXAME: exame.dS_EXAME || exame.DS_EXAME,
-      cD_EXAME_DB: exame.cD_EXAME_DB || exame.CD_EXAME_DB || '',
+      iD_EXAME: idExame,
+      desC_EXAME: exame.dS_EXAME || exame.DS_EXAME || '',
+      cD_EXAME_DB: exame.cD_EXAME_DB || exame.CD_EXAME_DB || exame.cD_EXAME || exame.CD_EXAME || '',
       sigla: exame.sigla || exame.SIGLA || '',
       material: exame.material || exame.MATERIAL || 'Soro',
     };
@@ -1728,6 +2317,10 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.examesEditandoTemp = [];
     this.examesEncontrados = [];
     this.buscaExame = '';
+    this.buscaExameCodigo = '';
+    this.buscaExameNome = '';
+    this.paginaExames = 1;
+    this.totalExamesDisponiveis = 0;
     if (this.timeoutBusca) {
       clearTimeout(this.timeoutBusca);
     }
@@ -1775,6 +2368,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       return;
     }
 
+    // Obter idUnidade do localStorage
+    const idUnidade = this.getUnidade() || 0;
+
     // Função para processar as operações em série
     const processarOperacoes = async () => {
       try {
@@ -1785,7 +2381,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
               cpf,
               exame.iD_EXAME,
               exame.cD_EXAME_DB || '',
-              exame.desC_EXAME || ''
+              exame.desC_EXAME || '',
+              idUnidade
             )
             .toPromise();
         }
@@ -1817,6 +2414,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     if (index > -1) {
       this.todosPacientes[index].exames = [...this.examesEditandoTemp];
     }
+
+    // Atualiza também a lista exibida na página atual (evita necessidade de F5)
+    this.atualizarPacientesDaPagina();
 
     this.salvandoExames = false;
     alert('✅ Exames atualizados com sucesso!');
