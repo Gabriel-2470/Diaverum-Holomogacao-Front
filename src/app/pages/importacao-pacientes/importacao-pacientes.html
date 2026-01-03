@@ -366,7 +366,7 @@
             <div class="status-dot" [class]="'status-' + paciente.status"></div>
           </div>
 
-          <div class="col-data">{{ paciente.data }}</div>
+          <div class="col-data">{{ paciente.data | date:'dd/MM/yyyy' }}</div>
 
           <div class="col-paciente">{{ paciente.nome }}</div>
 
@@ -380,7 +380,7 @@
 
           <div class="col-tratamento">{{ paciente.tratamento }}</div>
 
-          <div class="col-horario">{{ paciente.horarioColeta }}</div>
+          <div class="col-horario">{{ paciente.horarioColeta | date:'dd/MM/yyyy' }}</div>
 
           <div class="col-acoes">
             <button class="btn-toggle" (click)="togglePaciente(paciente)">
@@ -530,9 +530,9 @@
             <div class="tabela-exames-body">
               @for (exame of paciente.exames; track exame.iD_EXAME) {
               <div class="exame-linha">
-                <div class="col-exame-codigo">{{ exame.cD_EXAME_DB }}</div>
+                <div class="col-exame-codigo">{{ exame.cD_EXAME || exame.cD_EXAME_DB }}</div>
                 <div class="col-exame-nome">
-                  {{ exame.desC_EXAME || exame.cD_EXAME_DB || 'Exame ' + exame.iD_EXAME }}
+                  {{ exame.desC_EXAME || exame.cD_EXAME || exame.cD_EXAME_DB || 'Exame ' + exame.iD_EXAME }}
                 </div>
                 <div class="col-exame-amostras">1</div>
                 <div class="col-exame-material">{{ exame.material || 'Soro' }}</div>
@@ -994,7 +994,7 @@
             exame.iD_EXAME; let idx = $index) {
             <div class="exame-item-edit">
               <div class="exame-info">
-                <span class="exame-codigo">{{ exame.cD_EXAME_DB }}</span>
+                <span class="exame-codigo">{{ exame.cD_EXAME || exame.cD_EXAME_DB }}</span>
                 <span class="exame-nome">{{ exame.desC_EXAME }}</span>
               </div>
               <button class="btn-remover-pequeno" (click)="removerExameTemp(idx)" title="Remover">

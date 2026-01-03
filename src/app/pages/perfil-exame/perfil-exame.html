@@ -62,10 +62,10 @@
             <label>Unidades *</label>
             <div class="unidades-container">
               <div class="acoes-unidades">
-                <button type="button" class="btn-acao-unidade" (click)="selecionarTodasUnidades()">
+                <button *ngIf="authService.isAdmin()" type="button" class="btn-acao-unidade" (click)="selecionarTodasUnidades()">
                   Selecionar Todas
                 </button>
-                <button
+                <button *ngIf="authService.isAdmin()"
                   type="button"
                   class="btn-acao-unidade"
                   (click)="deselecionarTodasUnidades()"

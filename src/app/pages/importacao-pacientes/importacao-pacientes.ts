@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -25,7 +26,8 @@ interface PerfilExameUI {
 interface ExameDetalhado {
   iD_EXAME: number;
   desC_EXAME: string;
-  cD_EXAME_DB?: string;
+  cD_EXAME?: string; // Código principal do exame (ex: CRE, HIV)
+  cD_EXAME_DB?: string; // Código interno do banco
   iD_GRUPO_EXAME?: number | null;
   sigla?: string;
   material?: string;
@@ -111,6 +113,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   // Edição
   pacienteEditando: PacienteUI | null = null;
+
+  // Observable destroy for subscriptions
+  private destroy$ = new Subject<void>();
   salvandoEdicao = false;
 
   // Edição de Exames
@@ -216,6 +221,16 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.carregarUnidades();
     this.carregarPacientesComAgendamentos();
 
+    // Inscreve para atualizações quando exames de paciente mudam em outro lugar
+    this.pacienteService.pacienteExamesAtualizados$.pipe(takeUntil(this.destroy$)).subscribe((cpf) => {
+      if (!cpf) {
+        // fallback: recarregar tudo
+        this.carregarPacientesComAgendamentos();
+      } else {
+        this.atualizarExamesPacienteEmLista(cpf);
+      }
+    });
+
     // Listener para fechar menu ao clicar fora
     document.addEventListener('click', this.fecharMenusAbertos.bind(this));
   }
@@ -223,6 +238,10 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     // Remove o listener ao destruir o componente
     document.removeEventListener('click', this.fecharMenusAbertos.bind(this));
+
+    // Completa o subject para cancelar subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private fecharMenusAbertos(): void {
@@ -379,12 +398,11 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       });
     });
 
-    // Ordenar por data de agendamento (mais recente primeiro)
+    // Ordenar por nome do paciente (alfabético A→Z, case-insensitive)
     pacientesUI.sort((a, b) => {
-      if (!a.data && !b.data) return 0;
-      if (!a.data) return 1;
-      if (!b.data) return -1;
-      return b.data.localeCompare(a.data);
+      const na = a.nome || '';
+      const nb = b.nome || '';
+      return na.localeCompare(nb, 'pt-BR', { sensitivity: 'base' });
     });
 
     this.todosPacientes = pacientesUI;
@@ -471,8 +489,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         
         examesDetalhados.push({
           iD_EXAME: idExame,
-          desC_EXAME: reg.desC_EXAME || reg.DESC_EXAME || reg.dS_EXAME || reg.DS_EXAME || `Exame ${idExame}`,
-          cD_EXAME_DB: reg.cD_EXAME_DB || reg.CD_EXAME_DB || reg.cD_EXAME || reg.CD_EXAME || '',
+          desC_EXAME: reg.desC_EXAME || reg.DESC_EXAME || reg.dS_EXAME || reg.DS_EXAME || '',
+          cD_EXAME: reg.cD_EXAME || reg.CD_EXAME || '', // Código principal (ex: CRE, HIV)
+          cD_EXAME_DB: reg.cD_EXAME_DB || reg.CD_EXAME_DB || '', // Código interno do banco
           iD_GRUPO_EXAME: reg.iD_GRUPO_EXAME || reg.ID_GRUPO_EXAME || null,
           sigla: reg.sigla || reg.SIGLA || '',
           material: reg.material || reg.MATERIAL || 'Soro',
@@ -561,12 +580,11 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       });
     });
 
-    // Ordenar por data (mais recente primeiro)
+    // Ordenar por nome do paciente (alfabético A→Z, case-insensitive)
     pacientesUI.sort((a, b) => {
-      if (!a.data && !b.data) return 0;
-      if (!a.data) return 1;
-      if (!b.data) return -1;
-      return b.data.localeCompare(a.data);
+      const na = a.nome || '';
+      const nb = b.nome || '';
+      return na.localeCompare(nb, 'pt-BR', { sensitivity: 'base' });
     });
 
     this.todosPacientes = pacientesUI;
@@ -692,6 +710,13 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
             ex.cdExameDB ||
             exameCatalogo?.cD_EXAME_DB ||
             exameCatalogo?.CD_EXAME_DB ||
+            '';
+
+          // Código principal do exame (ex: CRE, HIV) - agora vem da TBL_AGENDA_DETALHE
+          const cdExame =
+            ex.cD_EXAME ||
+            ex.CD_EXAME ||
+            ex.cdExame ||
             exameCatalogo?.cD_EXAME ||
             exameCatalogo?.CD_EXAME ||
             '';
@@ -702,7 +727,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           const novoExame = {
             iD_EXAME: idExame,
             desC_EXAME: descExame,
-            cD_EXAME_DB: cdExameDB,
+            cD_EXAME: cdExame, // Código principal (ex: CRE)
+            cD_EXAME_DB: cdExameDB, // Código interno do banco
             iD_GRUPO_EXAME: idGrupoExame,
             sigla: exameCatalogo?.sigla || exameCatalogo?.SIGLA || ex.SIGLA || ex.sigla || '',
             material:
@@ -816,10 +842,16 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       console.log('DEBUG: Pacientes retornados:', pacientesUI.length);
     }
 
-    // Armazenar todos os pacientes e aplicar paginação
-    this.todosPacientes = Array.isArray(pacientesFiltradosPorUnidade)
-      ? [...pacientesFiltradosPorUnidade]
+    // Ordenar por nome do paciente (alfabético A→Z, case-insensitive) antes de armazenar
+    const ordenadoPorNome = Array.isArray(pacientesFiltradosPorUnidade)
+      ? [...pacientesFiltradosPorUnidade].sort((a, b) => {
+          const na = a.nome || '';
+          const nb = b.nome || '';
+          return na.localeCompare(nb, 'pt-BR', { sensitivity: 'base' });
+        })
       : [];
+
+    this.todosPacientes = ordenadoPorNome;
 
     // Sincronizar `pacientes` (usado por alguns métodos antigos) com a página atual
     this.pacientes = this.todosPacientes.slice(0, this.itensPorPagina);
@@ -1940,7 +1972,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
    * Verifica se há algum filtro ativo além da busca
    */
   get temFiltroAtivo(): boolean {
-    return this.filtroStatus !== 'todos' || !!this.filtroDataInicio || !!this.filtroDataFim;
+    // Considera também a busca por termo (nome ou CPF) como um filtro ativo
+    return this.filtroStatus !== 'todos' || !!this.filtroDataInicio || !!this.filtroDataFim || this.termoBusca.trim().length > 0;
   }
 
   /**
@@ -2296,7 +2329,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     const novoExame: ExameDetalhado = {
       iD_EXAME: idExame,
       desC_EXAME: exame.dS_EXAME || exame.DS_EXAME || '',
-      cD_EXAME_DB: exame.cD_EXAME_DB || exame.CD_EXAME_DB || exame.cD_EXAME || exame.CD_EXAME || '',
+      cD_EXAME: exame.cD_EXAME || exame.CD_EXAME || '', // Código principal (ex: CRE)
+      cD_EXAME_DB: exame.cD_EXAME_DB || exame.CD_EXAME_DB || '', // Código interno do banco
       sigla: exame.sigla || exame.SIGLA || '',
       material: exame.material || exame.MATERIAL || 'Soro',
     };
@@ -2380,7 +2414,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
             .adicionarExameAoPaciente(
               cpf,
               exame.iD_EXAME,
-              exame.cD_EXAME_DB || '',
+              exame.cD_EXAME || '', // Código principal (ex: CRE)
+              exame.cD_EXAME_DB || '', // Código interno do banco
               exame.desC_EXAME || '',
               idUnidade
             )
@@ -2418,8 +2453,43 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     // Atualiza também a lista exibida na página atual (evita necessidade de F5)
     this.atualizarPacientesDaPagina();
 
+    // Notifica outros componentes que os exames deste paciente foram atualizados
+    const cpf = this.pacienteEditandoExames?.cpf ?? null;
+    this.pacienteService.notifyPacienteExamesAtualizados(cpf);
+
     this.salvandoExames = false;
     alert('✅ Exames atualizados com sucesso!');
     this.cancelarEdicaoExames();
+  }
+
+  /**
+   * Atualiza os exames de um paciente na lista local buscando do backend pelo CPF
+   */
+  private atualizarExamesPacienteEmLista(cpf: string): void {
+    if (!cpf) return;
+    this.pacienteService.buscarExamesDoPaciente(cpf).subscribe({
+      next: (res: any) => {
+        const exames = res?.dados || res || [];
+        const index = this.todosPacientes.findIndex((p) => p.cpf === cpf);
+        if (index > -1) {
+          // Mapear para o formato local se necessário (apenas copia se tiver estrutura parecida)
+          this.todosPacientes[index].exames = (exames || []).map((e: any) => ({
+            iD_EXAME: e.iD_EXAME || e.ID_EXAME || e.ID_EXAME,
+            desC_EXAME: e.desC_EXAME || e.DESC_EXAME || e.DESC_EXAME || e.DESC_EXAME,
+            cD_EXAME: e.cD_EXAME || e.CD_EXAME || '', // Código principal (ex: CRE)
+            cD_EXAME_DB: e.cD_EXAME_DB || e.CD_EXAME_DB || '', // Código interno do banco
+            iD_GRUPO_EXAME: e.iD_GRUPO_EXAME || e.ID_GRUPO_EXAME || null,
+            sigla: e.sigla || e.SIGLA || '',
+            material: e.material || e.MATERIAL || 'Soro',
+          }));
+
+          // Atualiza view
+          this.atualizarPacientesDaPagina();
+        }
+      },
+      error: (err: any) => {
+        console.warn('Erro ao buscar exames do paciente para atualizar na lista:', err);
+      }
+    });
   }
 }

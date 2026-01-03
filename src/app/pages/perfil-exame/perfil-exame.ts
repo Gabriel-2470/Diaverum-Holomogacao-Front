@@ -73,7 +73,7 @@ export class PerfilExame implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private http: HttpClient,
-    private authService: AuthService
+    public authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -110,10 +110,46 @@ export class PerfilExame implements OnInit {
       next: (response) => {
         const todasUnidades = response.dados || response || [];
         // Filtrar "Coligada Global"
-        this.unidades = todasUnidades.filter((u: any) => {
+        const filtradas = todasUnidades.filter((u: any) => {
           const nomeUnidade = (u.noM_UNIDADE || u.NOM_UNIDADE || u.descricao || '').toLowerCase();
           return !nomeUnidade.includes('coligada global');
         });
+
+        // Se for ADMIN, mostra todas as unidades (acesso completo)
+        if (this.authService.isAdmin()) {
+          this.unidades = filtradas;
+          return;
+        }
+
+        // Para USERS: mostrar apenas as unidades vinculadas ao usuário
+        let allowedIds: number[] = [];
+        const unidadesUsuarioRaw = localStorage.getItem('unidadesUsuario');
+        if (unidadesUsuarioRaw) {
+          try {
+            const arr = JSON.parse(unidadesUsuarioRaw) as any[];
+            allowedIds = arr.map((u: any) => u.idUnidade || u.IdUnidade || u.iD_UNIDADE || u.ID_UNIDADE);
+          } catch (e) {
+            // ignore parse errors
+          }
+        }
+
+        // fallback: usar currentUser.idUnidade
+        const usuarioLogado = this.authService.getCurrentUser();
+        if ((!allowedIds || allowedIds.length === 0) && usuarioLogado && usuarioLogado.idUnidade) {
+          allowedIds = [usuarioLogado.idUnidade];
+        }
+
+        // Se allowedIds contém 0 -> consolidador (acesso a todas)
+        if (allowedIds.includes(0)) {
+          this.unidades = filtradas;
+        } else {
+          this.unidades = filtradas.filter((u: any) =>
+            allowedIds.includes(u.iD_UNIDADE || u.ID_UNIDADE || u.idUnidade || u.IdUnidade)
+          );
+
+          // Pré-selecionar a(s) unidade(s) do usuário
+          this.unidadesSelecionadas = this.unidades.map((u: any) => u.iD_UNIDADE || u.ID_UNIDADE || u.idUnidade || u.IdUnidade);
+        }
       },
       error: (erro) => {},
     });
@@ -331,6 +367,31 @@ export class PerfilExame implements OnInit {
             this.unidadesSelecionadas = (unidadesGrupo.dados || []).map(
               (item: any) => item.iD_UNIDADE || item.ID_UNIDADE
             );
+
+            // Se o usuário não for ADMIN, garantir que só veja/edite as unidades vinculadas a ele
+            if (!this.authService.isAdmin()) {
+              const unidadesUsuarioRaw = localStorage.getItem('unidadesUsuario');
+              let allowedIds: number[] = [];
+              if (unidadesUsuarioRaw) {
+                try {
+                  const arr = JSON.parse(unidadesUsuarioRaw) as any[];
+                  allowedIds = arr.map((u: any) => u.idUnidade || u.IdUnidade || u.iD_UNIDADE || u.ID_UNIDADE);
+                } catch (e) {
+                  // ignore
+                }
+              }
+
+              // Fallback para currentUser.idUnidade
+              const usuarioLogado = this.authService.getCurrentUser();
+              if ((!allowedIds || allowedIds.length === 0) && usuarioLogado && usuarioLogado.idUnidade) {
+                allowedIds = [usuarioLogado.idUnidade];
+              }
+
+              // Se não for consolidador (0), filtrar seleções
+              if (!allowedIds.includes(0)) {
+                this.unidadesSelecionadas = this.unidadesSelecionadas.filter((id: number) => allowedIds.includes(id));
+              }
+            }
           },
           error: (erro) => {},
         });

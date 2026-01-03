@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, forkJoin, of, throwError } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import { Observable, forkJoin, of, throwError, Subject } from 'rxjs';
+import { map, switchMap, catchError, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface Paciente {
@@ -65,6 +65,18 @@ export class PacienteService {
   private readonly apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
+
+  // Notificador para mudanças em exames/agenda de um paciente
+  private pacienteExamesAtualizadosSubject = new Subject<string | null>();
+  public pacienteExamesAtualizados$ = this.pacienteExamesAtualizadosSubject.asObservable();
+
+  /**
+   * Notifica que os exames de um paciente (ou a lista inteira) foram atualizados.
+   * Se cpf for omitido/not null, os assinantes podem atualizar apenas esse paciente.
+   */
+  public notifyPacienteExamesAtualizados(cpf?: string | null): void {
+    this.pacienteExamesAtualizadosSubject.next(cpf ?? null);
+  }
 
   // ==================== HEALTH CHECK ====================
 
@@ -280,7 +292,10 @@ export class PacienteService {
    * Remove um exame de um paciente (DELETE)
    */
   removerExameDoPaciente(cpf: string, idExame: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}/exame/${idExame}`);
+    return this.http.delete<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}/exame/${idExame}`).pipe(
+      // Notificar automaticamente quando um exame for removido
+      tap(() => this.notifyPacienteExamesAtualizados(cpf))
+    );
   }
 
   /**
@@ -289,16 +304,21 @@ export class PacienteService {
   adicionarExameAoPaciente(
     cpf: string,
     idExame: number,
+    cdExame: string,
     cdExameDb: string,
     descExame: string,
     idUnidade: number = 3039
   ): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}/exame`, {
       idExame,
+      cdExame,
       cdExameDb,
       descExame,
       idUnidade,
-    });
+    }).pipe(
+      // Notificar automaticamente quando um exame for adicionado
+      tap(() => this.notifyPacienteExamesAtualizados(cpf))
+    );
   }
 
   /**
