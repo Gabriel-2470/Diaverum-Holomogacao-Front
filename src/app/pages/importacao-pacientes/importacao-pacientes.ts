@@ -35,6 +35,7 @@ interface ExameDetalhado {
 
 interface PacienteUI {
   id: number;
+  idAgendamento?: number; // ID do agendamento específico deste registro
   data: string;
   nome: string;
   cpf: string;
@@ -881,7 +882,18 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   private atualizarPacientesDaPagina(): void {
     const inicio = (this.paginaAtual - 1) * this.itensPorPagina;
     const fim = inicio + this.itensPorPagina;
+    
+    console.log('📄 [ATUALIZAR PÁGINA] Atualizando lista paginada:', {
+      paginaAtual: this.paginaAtual,
+      itensPorPagina: this.itensPorPagina,
+      inicio,
+      fim,
+      totalPacientes: this.todosPacientes.length
+    });
+    
     this.pacientes = this.todosPacientes.slice(inicio, fim);
+    
+    console.log('📄 [ATUALIZAR PÁGINA] Lista atualizada. Pacientes na página:', this.pacientes.length);
   }
 
   /**
@@ -1907,24 +1919,45 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     const exame = paciente.exames[exameIndex];
 
+    console.log('🗑️ [REMOVER EXAME] Iniciando remoção:', {
+      pacienteId: paciente.id,
+      cpf: paciente.cpf,
+      exameId: exame.iD_EXAME,
+      exameNome: exame.desC_EXAME,
+      exameIndex: exameIndex,
+      totalExamesAntes: paciente.exames.length,
+      idAgendamento: paciente.idAgendamento
+    });
+
     if (!confirm(`Deseja remover o exame "${exame.desC_EXAME}" deste paciente?`)) {
+      console.log('🗑️ [REMOVER EXAME] Cancelado pelo usuário');
       return;
     }
 
-    // Chamar a API para remover o exame do backend
+    // Chamar a API para remover o exame do backend (usa apenas cpf e idExame)
     this.pacienteService.removerExameDoPaciente(paciente.cpf, exame.iD_EXAME).subscribe({
       next: () => {
+        console.log('✅ [REMOVER EXAME] API respondeu com sucesso');
+        
         // Remove localmente após sucesso no backend
+        console.log('🔄 [REMOVER EXAME] Exames antes do splice:', [...paciente.exames!]);
         paciente.exames!.splice(exameIndex, 1);
+        console.log('🔄 [REMOVER EXAME] Exames depois do splice:', [...paciente.exames!]);
 
         // Atualiza também em todosPacientes
         const indexTodos = this.todosPacientes.findIndex((p) => p.id === paciente.id);
+        console.log('🔍 [REMOVER EXAME] Index em todosPacientes:', indexTodos);
+        
         if (indexTodos > -1 && this.todosPacientes[indexTodos].exames) {
+          console.log('🔄 [REMOVER EXAME] todosPacientes antes:', [...this.todosPacientes[indexTodos].exames!]);
           this.todosPacientes[indexTodos].exames = [...paciente.exames!];
+          console.log('🔄 [REMOVER EXAME] todosPacientes depois:', [...this.todosPacientes[indexTodos].exames!]);
         }
+        
+        console.log('✅ [REMOVER EXAME] Remoção concluída com sucesso');
       },
       error: (err: any) => {
-        console.error('Erro ao remover exame:', err);
+        console.error('❌ [REMOVER EXAME] Erro ao remover exame:', err);
         alert('Erro ao remover exame. Tente novamente.');
       },
     });
@@ -2442,23 +2475,47 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   private finalizarSalvarExames(): void {
+    console.log('💾 [FINALIZAR SALVAR] Iniciando finalização do salvamento de exames');
+    console.log('💾 [FINALIZAR SALVAR] Exames temp (antes de salvar):', [...this.examesEditandoTemp]);
+    
     // Atualizar os exames do paciente na lista principal
     const index = this.todosPacientes.findIndex(
       (p) => p.id === this.pacienteEditandoExames!.id
     );
+    
+    console.log('🔍 [FINALIZAR SALVAR] Index do paciente em todosPacientes:', index);
+    
     if (index > -1) {
-      this.todosPacientes[index].exames = [...this.examesEditandoTemp];
+      console.log('🔄 [FINALIZAR SALVAR] Exames ANTES da atualização:', [...(this.todosPacientes[index].exames || [])]);
+      
+      // Criar uma cópia limpa dos exames para evitar duplicação
+      const examesUnicos = new Map<number, ExameDetalhado>();
+      this.examesEditandoTemp.forEach(exame => {
+        if (exame.iD_EXAME && !examesUnicos.has(exame.iD_EXAME)) {
+          examesUnicos.set(exame.iD_EXAME, { ...exame });
+        } else if (exame.iD_EXAME) {
+          console.warn('⚠️ [FINALIZAR SALVAR] Exame duplicado detectado (ignorado):', exame.iD_EXAME, exame.desC_EXAME);
+        }
+      });
+      
+      console.log('🔢 [FINALIZAR SALVAR] Exames únicos após limpeza:', examesUnicos.size);
+      
+      this.todosPacientes[index].exames = Array.from(examesUnicos.values());
+      console.log('✅ [FINALIZAR SALVAR] Exames DEPOIS da atualização:', [...this.todosPacientes[index].exames]);
     }
 
     // Atualiza também a lista exibida na página atual (evita necessidade de F5)
     this.atualizarPacientesDaPagina();
+    console.log('🔄 [FINALIZAR SALVAR] View atualizada (atualizarPacientesDaPagina chamado)');
 
     // Notifica outros componentes que os exames deste paciente foram atualizados
     const cpf = this.pacienteEditandoExames?.cpf ?? null;
+    console.log('📢 [FINALIZAR SALVAR] Notificando outros componentes - CPF:', cpf);
     this.pacienteService.notifyPacienteExamesAtualizados(cpf);
 
     this.salvandoExames = false;
     alert('✅ Exames atualizados com sucesso!');
+    console.log('✅ [FINALIZAR SALVAR] Processo concluído com sucesso');
     this.cancelarEdicaoExames();
   }
 
@@ -2467,28 +2524,61 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
    */
   private atualizarExamesPacienteEmLista(cpf: string): void {
     if (!cpf) return;
+    
+    console.log('🔄 [ATUALIZAR EXAMES] Buscando exames do backend para CPF:', cpf);
+    
     this.pacienteService.buscarExamesDoPaciente(cpf).subscribe({
       next: (res: any) => {
         const exames = res?.dados || res || [];
+        console.log('📥 [ATUALIZAR EXAMES] Resposta da API:', { totalExames: exames.length, exames });
+        
         const index = this.todosPacientes.findIndex((p) => p.cpf === cpf);
+        console.log('🔍 [ATUALIZAR EXAMES] Index do paciente em todosPacientes:', index);
+        
         if (index > -1) {
-          // Mapear para o formato local se necessário (apenas copia se tiver estrutura parecida)
-          this.todosPacientes[index].exames = (exames || []).map((e: any) => ({
-            iD_EXAME: e.iD_EXAME || e.ID_EXAME || e.ID_EXAME,
-            desC_EXAME: e.desC_EXAME || e.DESC_EXAME || e.DESC_EXAME || e.DESC_EXAME,
-            cD_EXAME: e.cD_EXAME || e.CD_EXAME || '', // Código principal (ex: CRE)
-            cD_EXAME_DB: e.cD_EXAME_DB || e.CD_EXAME_DB || '', // Código interno do banco
-            iD_GRUPO_EXAME: e.iD_GRUPO_EXAME || e.ID_GRUPO_EXAME || null,
-            sigla: e.sigla || e.SIGLA || '',
-            material: e.material || e.MATERIAL || 'Soro',
-          }));
+          console.log('🔄 [ATUALIZAR EXAMES] Exames ANTES da atualização:', [...(this.todosPacientes[index].exames || [])]);
+          
+          // Criar um novo array de exames para garantir que não haja duplicação
+          const examesAtualizados: ExameDetalhado[] = [];
+          
+          // Mapear para o formato local garantindo que cada exame aparece apenas uma vez
+          const examesUnicos = new Map<number, any>();
+          (exames || []).forEach((e: any) => {
+            const idExame = e.iD_EXAME || e.ID_EXAME;
+            if (idExame && !examesUnicos.has(idExame)) {
+              examesUnicos.set(idExame, e);
+            } else if (idExame) {
+              console.warn('⚠️ [ATUALIZAR EXAMES] Exame duplicado detectado (ignorado):', idExame, e.desC_EXAME || e.DESC_EXAME);
+            }
+          });
+          
+          console.log('🔢 [ATUALIZAR EXAMES] Exames únicos mapeados:', examesUnicos.size);
+          
+          examesUnicos.forEach((e: any) => {
+            examesAtualizados.push({
+              iD_EXAME: e.iD_EXAME || e.ID_EXAME,
+              desC_EXAME: e.desC_EXAME || e.DESC_EXAME || '',
+              cD_EXAME: e.cD_EXAME || e.CD_EXAME || '', // Código principal (ex: CRE)
+              cD_EXAME_DB: e.cD_EXAME_DB || e.CD_EXAME_DB || '', // Código interno do banco
+              iD_GRUPO_EXAME: e.iD_GRUPO_EXAME || e.ID_GRUPO_EXAME || null,
+              sigla: e.sigla || e.SIGLA || '',
+              material: e.material || e.MATERIAL || 'Soro',
+            });
+          });
+          
+          // Substituir completamente o array de exames
+          this.todosPacientes[index].exames = examesAtualizados;
+          console.log('✅ [ATUALIZAR EXAMES] Exames DEPOIS da atualização:', [...examesAtualizados]);
 
           // Atualiza view
           this.atualizarPacientesDaPagina();
+          console.log('🔄 [ATUALIZAR EXAMES] View atualizada (atualizarPacientesDaPagina chamado)');
+        } else {
+          console.warn('⚠️ [ATUALIZAR EXAMES] Paciente não encontrado em todosPacientes');
         }
       },
       error: (err: any) => {
-        console.warn('Erro ao buscar exames do paciente para atualizar na lista:', err);
+        console.error('❌ [ATUALIZAR EXAMES] Erro ao buscar exames do paciente:', err);
       }
     });
   }
