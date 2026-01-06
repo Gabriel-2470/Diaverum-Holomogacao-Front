@@ -96,7 +96,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   mostrarApenasUnidadeId: number | null = null;
   pacientes: PacienteUI[] = [];
   todosPacientes: PacienteUI[] = []; // Todos os pacientes sem paginação
-  pacientesSelecionados: Set<string> = new Set(); // CPFs dos pacientes selecionados
+  pacientesSelecionados: Set<string> = new Set(); // Chaves compostas "idAgendamento-cpf" dos pacientes selecionados
 
   // Paginação
   paginaAtual = 1;
@@ -222,15 +222,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.carregarUnidades();
     this.carregarPacientesComAgendamentos();
 
-    // Inscreve para atualizações quando exames de paciente mudam em outro lugar
-    this.pacienteService.pacienteExamesAtualizados$.pipe(takeUntil(this.destroy$)).subscribe((cpf) => {
-      if (!cpf) {
-        // fallback: recarregar tudo
-        this.carregarPacientesComAgendamentos();
-      } else {
-        this.atualizarExamesPacienteEmLista(cpf);
-      }
-    });
+    // ❌ REMOVIDO: Subscribe que recarregava tudo e fechava áreas expandidas
+    // this.pacienteService.pacienteExamesAtualizados$.pipe(takeUntil(this.destroy$)).subscribe(...)
 
     // Listener para fechar menu ao clicar fora
     document.addEventListener('click', this.fecharMenusAbertos.bind(this));
@@ -254,12 +247,27 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
    * Carrega as unidades disponíveis
    */
   carregarUnidades(): void {
+    console.log('🔄 [carregarUnidades] Iniciando busca de unidades...');
     this.unidadeService.buscarUnidades().subscribe({
       next: (unidades: Unidade[]) => {
         this.unidades = unidades;
+        console.log('✅ [carregarUnidades] Unidades carregadas:', unidades.length);
       },
       error: (erro: any) => {
         this.unidades = [];
+        console.error('❌ [carregarUnidades] Erro ao carregar unidades:', {
+          status: erro?.status,
+          statusText: erro?.statusText,
+          message: erro?.message,
+          error: erro?.error,
+          url: erro?.url
+        });
+        if (erro?.status === 502) {
+          console.error('🚨 ERRO 502: O servidor backend não está respondendo corretamente');
+          console.error('   - Verifique se a API .NET está rodando');
+          console.error('   - Verifique os logs do backend');
+          console.error('   - Verifique a configuração do proxy/nginx');
+        }
       },
     });
   }
@@ -426,29 +434,59 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
    */
   carregarPacientesLegado(): void {
     this.carregando = true;
-    console.log('📍 Carregando dados - idUnidade:', this.mostrarApenasUnidadeId);
+    const timestamp = new Date().toISOString();
+    console.log(`🔄 [${timestamp}] [carregarPacientesLegado] Iniciando...`);
+    console.log('📍 [carregarPacientesLegado] idUnidade:', this.mostrarApenasUnidadeId);
 
     // O endpoint /api/agenda-detalhe já traz tudo junto (paciente + agendamento + exames)
     this.pacienteService.buscarAgendaDetalhes(this.mostrarApenasUnidadeId).subscribe({
       next: (response: any) => {
         const detalhes = response?.dados || response || [];
-        console.log('✅ Detalhes retornados:', detalhes.length);
+        console.log('✅ [carregarPacientesLegado] Detalhes retornados:', detalhes.length);
         
         if (detalhes.length > 0) {
-          console.log('📋 Exemplo de registro:', JSON.stringify(detalhes[0], null, 2));
+          console.log('📋 [carregarPacientesLegado] Exemplo de registro:', JSON.stringify(detalhes[0], null, 2));
         }
         
         this.processarDetalhesConsolidados(detalhes);
         this.carregando = false;
+        console.log(`✅ [${new Date().toISOString()}] [carregarPacientesLegado] Concluído com sucesso`);
       },
       error: (erro: any) => {
         this.carregando = false;
         this.pacientes = [];
         this.todosPacientes = [];
-        console.error('Erro ao carregar detalhes:', erro);
+        console.error(`❌ [${new Date().toISOString()}] [carregarPacientesLegado] Erro:`, {
+          status: erro?.status,
+          statusText: erro?.statusText,
+          message: erro?.message,
+          error: erro?.error,
+          url: erro?.url,
+          headers: erro?.headers
+        });
         
-        if (erro?.status === 403) {
+        if (erro?.status === 502) {
+          console.error('🚨 ERRO 502 (Bad Gateway): Problemas na comunicação com o servidor');
+          console.error('   📌 Possíveis causas:');
+          console.error('      1. API .NET não está rodando ou crashou');
+          console.error('      2. Timeout na comunicação (requisição muito lenta)');
+          console.error('      3. Erro não tratado na API que causou falha');
+          console.error('      4. Problemas de configuração de proxy/nginx/IIS');
+          console.error('   🔧 Ações recomendadas:');
+          console.error('      1. Verifique se o backend está rodando (F:\\Projetos_Vlt\\Prod\\DiaverumApi)');
+          console.error('      2. Verifique os logs do servidor .NET');
+          console.error('      3. Teste o endpoint diretamente: ' + erro?.url);
+          alert('❌ Erro 502: O servidor não está respondendo.\n\nO backend pode estar offline ou com problemas.\n\nVerifique o console (F12) para mais detalhes.');
+        } else if (erro?.status === 403) {
           alert('Você não tem permissão para ver os pacientes desta unidade.');
+        } else if (erro?.status === 0) {
+          console.error('🚨 ERRO 0: Falha na conexão de rede');
+          console.error('   - O backend pode não estar acessível');
+          console.error('   - Verifique se a API está rodando');
+          console.error('   - Verifique configurações de CORS');
+          alert('❌ Erro de conexão: Não foi possível conectar ao servidor.\n\nVerifique se o backend está rodando.');
+        } else {
+          alert(`❌ Erro ${erro?.status || 'desconhecido'}: ${erro?.message || 'Erro ao carregar dados'}.\n\nVerifique o console (F12) para mais detalhes.`);
         }
       }
     });
@@ -456,28 +494,38 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   /**
    * Processa os detalhes consolidados do endpoint /api/agenda-detalhe
-   * Agrupa por CPF e monta a estrutura PacienteUI
+   * Agrupa por (ID_AGENDAMENTO + CPF) e monta a estrutura PacienteUI
+   * IMPORTANTE: Cada agendamento aparece como linha separada, mesmo para o mesmo paciente
    */
   private processarDetalhesConsolidados(detalhes: any[]): void {
-    // Agrupar por CPF do paciente
-    const pacientesPorCpf = new Map<string, any[]>();
+    // Agrupar por ID_AGENDAMENTO + CPF (chave composta)
+    const pacientesPorAgendamentoCpf = new Map<string, any[]>();
     
     detalhes.forEach((registro: any) => {
       const cpf = registro.cpF_PACIENTE || registro.CPF_PACIENTE || '';
-      if (!cpf) return;
+      const idAgendamento = registro.iD_AGENDAMENTO || registro.ID_AGENDAMENTO;
       
-      if (!pacientesPorCpf.has(cpf)) {
-        pacientesPorCpf.set(cpf, []);
+      if (!cpf || !idAgendamento) return;
+      
+      // Chave composta: "idAgendamento-cpf"
+      const chave = `${idAgendamento}-${cpf}`;
+      
+      if (!pacientesPorAgendamentoCpf.has(chave)) {
+        pacientesPorAgendamentoCpf.set(chave, []);
       }
-      pacientesPorCpf.get(cpf)!.push(registro);
+      pacientesPorAgendamentoCpf.get(chave)!.push(registro);
     });
 
     // Transformar em PacienteUI[]
     const pacientesUI: PacienteUI[] = [];
     let idContador = 1; // Contador para garantir IDs únicos
     
-    pacientesPorCpf.forEach((registros, cpf) => {
+    pacientesPorAgendamentoCpf.forEach((registros, chave) => {
       const primeiro = registros[0];
+      
+      // Extrair idAgendamento e CPF da chave composta
+      const [idAgendamentoStr, cpf] = chave.split('-');
+      const idAgendamento = Number(idAgendamentoStr);
       
       // Mapear todos os exames do paciente (sem duplicatas)
       const examesDetalhados: ExameDetalhado[] = [];
@@ -566,7 +614,8 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         : (primeiro.desC_GRUPO_EXAME || primeiro.DESC_GRUPO_EXAME || '');
 
       pacientesUI.push({
-        id: primeiro.iD_AGENDAMENTO || primeiro.ID_AGENDAMENTO || primeiro.iD_PACIENTE || primeiro.ID_PACIENTE || idContador++,
+        id: idContador++, // ✅ ID único sequencial para cada linha (independente de agendamento/cpf)
+        idAgendamento: idAgendamento, // ID do agendamento para operações com chave composta
         data: dataCadastro || dataAgendamento,
         nome: primeiro.nomE_PACIENTE || primeiro.NOME_PACIENTE || '',
         cpf: cpf,
@@ -591,8 +640,13 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.todosPacientes = pacientesUI;
     this.pacientes = this.todosPacientes.slice(0, this.itensPorPagina);
     
-    // Debug: mostrar todos os CPFs carregados (processarDetalhesConsolidados)
-    console.log('📋 [processarDetalhesConsolidados] CPFs carregados:', this.todosPacientes.map(p => ({ cpf: p.cpf, nome: p.nome, status: p.status })));
+    // Debug: mostrar todos os agendamentos carregados (processarDetalhesConsolidados)
+    console.log('📋 [processarDetalhesConsolidados] Agendamentos carregados:', this.todosPacientes.map(p => ({ 
+      idAgendamento: p.idAgendamento, 
+      cpf: p.cpf, 
+      nome: p.nome, 
+      status: p.status 
+    })));
     
     this.pacientesSelecionados.clear();
     this.paginaAtual = 1;
@@ -1061,6 +1115,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       this.dataColetaGlobal = '';
       this.unidadesSelecionadas = [];
       this.incluirGlicose = false;
+      
+      // Resetar o input para permitir selecionar o mesmo arquivo novamente
+      event.target.value = '';
     }
   }
 
@@ -1381,6 +1438,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     this.nomeArquivo = '';
     this.dadosExcelParsed = [];
     this.mostrarModal = false;
+    this.mostrarPreview = false;
   }
 
   abrirTransferencia(): void {
@@ -1388,6 +1446,14 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     if (pacientes.length === 0) {
       alert('Nenhum paciente selecionado para transferência.');
+      return;
+    }
+
+    // Validar que todos os pacientes têm idAgendamento
+    const semIdAgendamento = pacientes.filter(p => !p.idAgendamento);
+    if (semIdAgendamento.length > 0) {
+      console.error('❌ Pacientes sem idAgendamento:', semIdAgendamento);
+      alert('Erro: Alguns pacientes não têm ID de agendamento. Recarregue a página e tente novamente.');
       return;
     }
 
@@ -1400,52 +1466,39 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       paciente.status = 'pendente';
     });
 
-    const cpfs = pacientes.map((p) => p.cpf);
+    // Montar lista de agendamentos com chave composta (idAgendamento + cpf)
+    const agendamentos = pacientes.map((p) => ({
+      idAgendamento: p.idAgendamento!,
+      cpf: p.cpf
+    }));
 
-    // Chamar endpoint de processamento de pendentes
-    this.pacienteService.processarPendentes(cpfs).subscribe({
+    // Chamar endpoint de transferência REAL (SOAP DBSync)
+    console.log('🚀 [abrirTransferencia] Iniciando TRANSFERÊNCIA REAL via DBSync de', agendamentos.length, 'agendamentos');
+    console.log('📋 [abrirTransferencia] Agendamentos:', agendamentos);
+    
+    this.pacienteService.processarPendentesV2(agendamentos).subscribe({
       next: (res: any) => {
+        console.log('✅ [abrirTransferencia] Resposta recebida:', res);
+        
         // Verificar resposta do backend
-        if (res.sucesso && res.resultados) {
-          // Backend retorna array com status de cada CPF
-          res.resultados.forEach((resultado: any, index: number) => {
-            const paciente = pacientes.find((p) => p.cpf === resultado.cpf);
-            if (paciente) {
-              if (resultado.enviado || resultado.sucesso) {
-                paciente.status = 'enviado'; // Verde = Transferido
-                paciente.podeEditar = false;
-              } else {
-                paciente.status = 'erro'; // Vermelho = Erro(s)
-              }
-            }
-            // Atualizar progresso
-            this.progressoTransferencia.atual = index + 1;
-          });
-
-          const enviados = res.resultados.filter((r: any) => r.enviado || r.sucesso).length;
-          const erros = res.resultados.length - enviados;
-
-          if (erros > 0) {
-            alert(
-              `⚠️ ${enviados} enviado(s) com sucesso, ${erros} com erro. Verifique os pacientes marcados em vermelho.`
-            );
-          } else {
-            alert(`✅ ${enviados} paciente(s) transferido(s) com sucesso!`);
-          }
-        } else if (res.sucesso) {
-          // Resposta simples de sucesso sem detalhes por CPF
+        if (res.sucesso) {
+          console.log('✅ [abrirTransferencia] Todos marcados como enviados com sucesso');
+          
+          // Marcar todos como enviado
           pacientes.forEach((paciente) => {
             paciente.status = 'enviado';
             paciente.podeEditar = false;
           });
+          
           this.progressoTransferencia.atual = pacientes.length;
-          alert(`✅ ${pacientes.length} paciente(s) transferido(s) com sucesso!`);
+          alert(`✅ ${pacientes.length} agendamento(s) marcado(s) como enviado(s) com sucesso!`);
         } else {
           // Resposta indica erro geral
+          console.error('❌ [abrirTransferencia] Erro:', res.mensagem || 'Desconhecido');
           pacientes.forEach((paciente) => {
             paciente.status = 'erro';
           });
-          alert(`❌ Erro ao transferir pacientes: ${res.mensagem || 'Erro desconhecido'}`);
+          alert(`❌ Erro ao marcar agendamentos: ${res.mensagem || 'Erro desconhecido'}`);
         }
 
         // Desativar loading e limpar seleção
@@ -1458,8 +1511,27 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         pacientes.forEach((paciente) => {
           paciente.status = 'erro';
         });
-        console.error('Erro ao transferir:', err);
-        alert('❌ Erro ao transferir pacientes. Verifique o console para mais detalhes.');
+        console.error('❌ [abrirTransferencia] Erro na requisição:', {
+          status: err?.status,
+          statusText: err?.statusText,
+          message: err?.message,
+          error: err?.error,
+          url: err?.url
+        });
+        
+        let mensagemErro = 'Erro ao marcar agendamentos.';
+        if (err?.status === 502) {
+          mensagemErro = 'Erro 502: O servidor não está respondendo.\nO backend pode estar offline ou com problemas.';
+          console.error('🚨 ERRO 502: Verifique se a API está rodando e os logs do servidor');
+        } else if (err?.status === 0) {
+          mensagemErro = 'Erro de conexão: Não foi possível conectar ao servidor.';
+          console.error('🚨 ERRO 0: Falha na conexão de rede');
+        } else if (err?.status === 500) {
+          mensagemErro = 'Erro 500: Erro interno no servidor.\nVerifique os logs do backend.';
+          console.error('🚨 ERRO 500: Erro interno do servidor');
+        }
+        
+        alert(`❌ ${mensagemErro}\n\nVerifique o console (F12) para mais detalhes.`);
 
         // Desativar loading
         this.transferindo = false;
@@ -1469,7 +1541,10 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   getPacientesSelecionados() {
-    return this.todosPacientes.filter((p) => this.pacientesSelecionados.has(p.cpf));
+    return this.todosPacientes.filter((p) => {
+      const chave = `${p.idAgendamento}-${p.cpf}`;
+      return this.pacientesSelecionados.has(chave);
+    });
   }
 
   excluirPacientesSelecionados(): void {
@@ -1479,28 +1554,63 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     const qtdAntes = this.quantidadeSelecionados;
     const confirmacao = confirm(
-      `Deseja realmente remover os exames de ${qtdAntes} paciente${qtdAntes > 1 ? 's' : ''} selecionado${
+      `Deseja realmente remover os exames de ${qtdAntes} agendamento${qtdAntes > 1 ? 's' : ''} selecionado${
         qtdAntes > 1 ? 's' : ''
-      }?\n\nOs pacientes sem exames não aparecerão mais na listagem.`
+      }?\n\nOs agendamentos sem exames não aparecerão mais na listagem.`
     );
 
     if (confirmacao) {
-      const cpfsParaRemover = Array.from(this.pacientesSelecionados);
+      // Obter lista de agendamentos selecionados
+      const pacientesSelecionados = this.getPacientesSelecionados();
+      const agendamentosParaRemover = pacientesSelecionados.map(p => ({
+        idAgendamento: p.idAgendamento!,
+        cpf: p.cpf
+      }));
+
+      // Validar que todos têm idAgendamento
+      if (agendamentosParaRemover.some(a => !a.idAgendamento)) {
+        alert('Erro: Alguns agendamentos não têm ID. Recarregue a página e tente novamente.');
+        return;
+      }
 
       // Ativar estado de carregamento
       this.excluindoEmMassa = true;
-      this.progressoExclusao = { atual: 0, total: cpfsParaRemover.length };
+      this.progressoExclusao = { atual: 0, total: agendamentosParaRemover.length };
 
-      // Remover pacientes por CPF (soft delete)
-      this.pacienteService.removerPacientesPorCpf(cpfsParaRemover).subscribe({
+      // Remover agendamentos (soft delete usando chave composta)
+      console.log('🔄 [excluirPacientesSelecionados] Iniciando exclusão de', agendamentosParaRemover.length, 'agendamentos');
+      console.log('📋 [excluirPacientesSelecionados] Agendamentos:', agendamentosParaRemover);
+      
+      this.pacienteService.removerPorAgendamentos(agendamentosParaRemover).subscribe({
         next: (resultado: any) => {
-          this.finalizarExclusao(cpfsParaRemover, resultado.removidos || cpfsParaRemover.length, 0);
-        },
-        error: (erro: any) => {
-          console.error('Erro ao remover pacientes:', erro);
+          console.log('✅ [excluirPacientesSelecionados] Exclusão concluída:', resultado);
+          
+          // Remover da lista local usando chave composta
+          const chavesRemovidas = agendamentosParaRemover.map(a => `${a.idAgendamento}-${a.cpf}`);
+          this.todosPacientes = this.todosPacientes.filter((paciente) => {
+            const chave = `${paciente.idAgendamento}-${paciente.cpf}`;
+            return !chavesRemovidas.includes(chave);
+          });
+
+          // Limpar seleção
+          this.pacientesSelecionados.clear();
+
+          // Recalcular paginação se necessário
+          if (this.paginaAtual > this.totalPaginas && this.totalPaginas > 0) {
+            this.paginaAtual = this.totalPaginas;
+          }
+
+          // Desativar estado de carregamento
           this.excluindoEmMassa = false;
           this.progressoExclusao = { atual: 0, total: 0 };
-          alert('Erro ao remover pacientes. Tente novamente.');
+
+          alert(`✅ Agendamento(s) removido(s) com sucesso!\n${agendamentosParaRemover.length} agendamento(s) não aparecerão mais na listagem.`);
+        },
+        error: (erro: any) => {
+          console.error('Erro ao remover agendamentos:', erro);
+          this.excluindoEmMassa = false;
+          this.progressoExclusao = { atual: 0, total: 0 };
+          alert('Erro ao remover agendamentos. Tente novamente.');
         },
       });
     }
@@ -1751,6 +1861,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
                       this.carregarPacientesComAgendamentos();
                     })
 
+              } else {
+                // Se não houve sucessos mas ainda assim queremos recarregar a lista
+                this.carregarPacientesComAgendamentos();
               }
 
               // Mostrar modal de erros se houver falhas, senão mostrar alerta de sucesso
@@ -1762,6 +1875,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
                 );
               }
 
+              // Resetar estado do modal e arquivo após a importação
               this.removerArquivo();
             },
             error: (erro: any) => {
@@ -1783,6 +1897,12 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
               };
 
               this.mostrarModalErros = true;
+              
+              // Resetar estado do modal e arquivo após erro (usa removerArquivo)
+              this.removerArquivo();
+              
+              // Atualizar a lista mesmo em caso de erro
+              this.carregarPacientesComAgendamentos();
             },
           });
   }
@@ -1879,19 +1999,33 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   excluirPaciente(paciente: PacienteUI): void {
     paciente.menuAberto = false;
 
-    if (!confirm(`Tem certeza que deseja excluir o paciente ${paciente.nome}?`)) {
+    if (!confirm(`Tem certeza que deseja excluir este agendamento do paciente ${paciente.nome}?`)) {
       return;
     }
 
-    // Usar a mesma lógica de remoção por CPF (soft delete) usada na exclusão em massa
-    const cpfsParaRemover = [paciente.cpf];
-    this.pacienteService.removerPacientesPorCpf(cpfsParaRemover).subscribe({
-      next: (resultado: any) => {
-        // Remover localmente pelo CPF
-        this.todosPacientes = this.todosPacientes.filter((p) => p.cpf !== paciente.cpf);
+    console.log('🗑️ [EXCLUIR AGENDAMENTO] Removendo agendamento específico:', {
+      id: paciente.id,
+      idAgendamento: paciente.idAgendamento,
+      cpf: paciente.cpf,
+      nome: paciente.nome
+    });
 
-        // Também remover de dadosExcelParsed pelo CPF (usa CPF maiúsculo)
-        this.dadosExcelParsed = this.dadosExcelParsed.filter((p) => (p.CPF || '') !== paciente.cpf);
+    // Validar que temos idAgendamento
+    if (!paciente.idAgendamento) {
+      console.error('❌ [EXCLUIR AGENDAMENTO] idAgendamento não definido');
+      alert('Erro: ID do agendamento não encontrado. Recarregue a página e tente novamente.');
+      return;
+    }
+
+    // Usar a remoção por agendamentos (chave composta)
+    const agendamentosParaRemover = [{ idAgendamento: paciente.idAgendamento, cpf: paciente.cpf }];
+    
+    this.pacienteService.removerPorAgendamentos(agendamentosParaRemover).subscribe({
+      next: (resultado: any) => {
+        console.log('✅ [EXCLUIR AGENDAMENTO] Removido com sucesso:', resultado);
+        
+        // Remover localmente apenas ESTE agendamento específico (por ID único)
+        this.todosPacientes = this.todosPacientes.filter((p) => p.id !== paciente.id);
 
         // Ajustar pagina se necessário
         if (this.paginaAtual > this.totalPaginas && this.totalPaginas > 0) {
@@ -1899,16 +2033,24 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         }
         this.atualizarPaginasVisiveis();
 
-        alert('Paciente removido da listagem com sucesso!');
+        alert('Agendamento removido da listagem com sucesso!');
       },
       error: (err: any) => {
-        console.error('Erro ao remover paciente:', err);
-        alert('Erro ao remover paciente. Verifique o console para mais detalhes.');
+        console.error('❌ [EXCLUIR AGENDAMENTO] Erro:', err);
+        alert('Erro ao remover agendamento. Verifique o console para mais detalhes.');
       },
     });
   }
 
   removerExame(paciente: PacienteUI, exameIndex: number): void {
+    console.log('🔍 [REMOVER EXAME] ENTRADA:', {
+      paciente_id: paciente.id,
+      paciente_idAgendamento: paciente.idAgendamento,
+      paciente_cpf: paciente.cpf,
+      exameIndex: exameIndex,
+      totalExames: paciente.exames?.length
+    });
+    
     if (!paciente.exames || !paciente.exames[exameIndex]) return;
 
     // Bloquear remoção se for o último exame
@@ -1919,14 +2061,15 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
     const exame = paciente.exames[exameIndex];
 
-    console.log('🗑️ [REMOVER EXAME] Iniciando remoção:', {
+    console.log('🗑️ [REMOVER EXAME] Dados completos:', {
       pacienteId: paciente.id,
       cpf: paciente.cpf,
       exameId: exame.iD_EXAME,
       exameNome: exame.desC_EXAME,
       exameIndex: exameIndex,
       totalExamesAntes: paciente.exames.length,
-      idAgendamento: paciente.idAgendamento
+      idAgendamento: paciente.idAgendamento,
+      urlAPI: `/api/agenda-detalhe/agendamento/${paciente.idAgendamento}/paciente/${paciente.cpf}/exame/${exame.iD_EXAME}`
     });
 
     if (!confirm(`Deseja remover o exame "${exame.desC_EXAME}" deste paciente?`)) {
@@ -1934,8 +2077,15 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
       return;
     }
 
-    // Chamar a API para remover o exame do backend (usa apenas cpf e idExame)
-    this.pacienteService.removerExameDoPaciente(paciente.cpf, exame.iD_EXAME).subscribe({
+    // Validar que temos idAgendamento
+    if (!paciente.idAgendamento) {
+      console.error('❌ [REMOVER EXAME] idAgendamento não definido para o paciente');
+      alert('Erro: ID do agendamento não encontrado. Recarregue a página e tente novamente.');
+      return;
+    }
+
+    // Chamar a API para remover o exame do backend (usa idAgendamento + cpf + idExame)
+    this.pacienteService.removerExameDoPaciente(paciente.idAgendamento, paciente.cpf, exame.iD_EXAME).subscribe({
       next: () => {
         console.log('✅ [REMOVER EXAME] API respondeu com sucesso');
         
@@ -1957,8 +2107,22 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         console.log('✅ [REMOVER EXAME] Remoção concluída com sucesso');
       },
       error: (err: any) => {
-        console.error('❌ [REMOVER EXAME] Erro ao remover exame:', err);
-        alert('Erro ao remover exame. Tente novamente.');
+        console.error('❌ [REMOVER EXAME] Erro ao remover exame:', {
+          status: err?.status,
+          statusText: err?.statusText,
+          message: err?.message,
+          error: err?.error,
+          url: err?.url
+        });
+        let mensagemErro = 'Erro ao remover exame.';
+        if (err?.status === 401) {
+          mensagemErro = 'Erro 401: Você não está autorizado. Faça login novamente.';
+        } else if (err?.status === 404) {
+          mensagemErro = 'Erro 404: Exame não encontrado neste agendamento.';
+        } else if (err?.status === 0) {
+          mensagemErro = 'Erro de conexão: Backend não está respondendo.';
+        }
+        alert(mensagemErro + '\n\nVerifique o console (F12) para mais detalhes.');
       },
     });
   }
@@ -2158,22 +2322,23 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   // ==================== MÉTODOS DE SELEÇÃO ====================
 
-  togglePacienteSelecionado(cpf: string): void {
+  togglePacienteSelecionado(paciente: PacienteUI): void {
     // Verifica se o paciente já foi enviado (não pode ser selecionado)
-    const paciente = this.todosPacientes.find(p => p.cpf === cpf);
-    if (paciente?.status === 'enviado') {
+    if (paciente.status === 'enviado') {
       return; // Não permite selecionar pacientes já enviados
     }
 
-    if (this.pacientesSelecionados.has(cpf)) {
-      this.pacientesSelecionados.delete(cpf);
+    const chave = `${paciente.idAgendamento}-${paciente.cpf}`;
+    if (this.pacientesSelecionados.has(chave)) {
+      this.pacientesSelecionados.delete(chave);
     } else {
-      this.pacientesSelecionados.add(cpf);
+      this.pacientesSelecionados.add(chave);
     }
   }
 
-  isPacienteSelecionado(cpf: string): boolean {
-    return this.pacientesSelecionados.has(cpf);
+  isPacienteSelecionado(paciente: PacienteUI): boolean {
+    const chave = `${paciente.idAgendamento}-${paciente.cpf}`;
+    return this.pacientesSelecionados.has(chave);
   }
 
   selecionarTodosPacientes(): void {
@@ -2185,21 +2350,31 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     
     // Seleciona apenas os pacientes que estão visíveis e NÃO foram enviados
     this.pacientesBase.forEach((paciente) => {
-      if (paciente.status !== 'enviado' && paciente.cpf) {
-        console.log('  - Adicionando CPF:', paciente.cpf);
-        this.pacientesSelecionados.add(paciente.cpf);
+      if (paciente.status !== 'enviado' && paciente.cpf && paciente.idAgendamento) {
+        const chave = `${paciente.idAgendamento}-${paciente.cpf}`;
+        console.log('  - Adicionando chave:', chave);
+        this.pacientesSelecionados.add(chave);
       }
     });
     
     console.log('  - Total selecionados:', this.pacientesSelecionados.size);
-    console.log('  - CPFs selecionados:', Array.from(this.pacientesSelecionados));
+    console.log('  - Chaves selecionadas:', Array.from(this.pacientesSelecionados));
   }
 
   deselecionarTodosPacientes(): void {
+    console.log('🔍 DEBUG deselecionarTodos:');
+    console.log('  - pacientesBase.length:', this.pacientesBase.length);
+    
     // Deseleciona apenas os pacientes que estão visíveis (respeitando o filtro)
     this.pacientesBase.forEach((paciente) => {
-      this.pacientesSelecionados.delete(paciente.cpf);
+      if (paciente.cpf && paciente.idAgendamento) {
+        const chave = `${paciente.idAgendamento}-${paciente.cpf}`;
+        console.log('  - Removendo chave:', chave);
+        this.pacientesSelecionados.delete(chave);
+      }
     });
+    
+    console.log('  - Total selecionados após remoção:', this.pacientesSelecionados.size);
   }
 
   toggleTodosPacientes(): void {
@@ -2216,10 +2391,13 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
 
   get todosSelecionados(): boolean {
     // Verifica se todos os pacientes SELECIONÁVEIS (não enviados) do filtro atual estão selecionados
-    const pacientesSelecionaveis = this.pacientesBase.filter(p => p.status !== 'enviado' && p.cpf);
+    const pacientesSelecionaveis = this.pacientesBase.filter(p => p.status !== 'enviado' && p.cpf && p.idAgendamento);
     return (
       pacientesSelecionaveis.length > 0 &&
-      pacientesSelecionaveis.every((p) => this.pacientesSelecionados.has(p.cpf))
+      pacientesSelecionaveis.every((p) => {
+        const chave = `${p.idAgendamento}-${p.cpf}`;
+        return this.pacientesSelecionados.has(chave);
+      })
     );
   }
 
@@ -2408,8 +2586,16 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     if (!this.pacienteEditandoExames) return;
 
     const cpf = this.pacienteEditandoExames.cpf;
+    const idAgendamento = this.pacienteEditandoExames.idAgendamento;
     const examesOriginais = this.pacienteEditandoExames.exames || [];
     const examesNovos = this.examesEditandoTemp;
+
+    // Validar que temos idAgendamento
+    if (!idAgendamento) {
+      console.error('❌ [SALVAR EXAMES] idAgendamento não definido');
+      alert('Erro: ID do agendamento não encontrado. Recarregue a página e tente novamente.');
+      return;
+    }
 
     // Verificar se está tentando ficar sem nenhum exame
     if (examesNovos.length === 0) {
@@ -2445,6 +2631,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         for (const exame of examesAdicionados) {
           await this.pacienteService
             .adicionarExameAoPaciente(
+              idAgendamento,
               cpf,
               exame.iD_EXAME,
               exame.cD_EXAME || '', // Código principal (ex: CRE)
@@ -2458,15 +2645,30 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         // DEPOIS: remover exames (pode ser em paralelo)
         if (examesRemovidos.length > 0) {
           const remocoes = examesRemovidos.map((exame) =>
-            this.pacienteService.removerExameDoPaciente(cpf, exame.iD_EXAME).toPromise()
+            this.pacienteService.removerExameDoPaciente(idAgendamento, cpf, exame.iD_EXAME).toPromise()
           );
           await Promise.all(remocoes);
         }
 
         this.finalizarSalvarExames();
-      } catch (erro) {
-        console.error('Erro ao salvar exames:', erro);
-        alert('❌ Erro ao salvar algumas alterações. Verifique e tente novamente.');
+      } catch (erro: any) {
+        console.error('❌ [SALVAR EXAMES] Erro detalhado:', {
+          erro: erro,
+          status: erro?.status,
+          statusText: erro?.statusText,
+          message: erro?.message,
+          error: erro?.error,
+          url: erro?.url
+        });
+        let mensagemErro = 'Erro ao salvar algumas alterações.';
+        if (erro?.status === 401) {
+          mensagemErro = 'Erro 401: Você não está autorizado. Faça login novamente.';
+        } else if (erro?.status === 404) {
+          mensagemErro = 'Erro 404: Agendamento não encontrado.';
+        } else if (erro?.status === 0) {
+          mensagemErro = 'Erro de conexão: Backend não está respondendo.';
+        }
+        alert('❌ ' + mensagemErro + '\n\nVerifique o console (F12) para mais detalhes.');
         this.salvandoExames = false;
       }
     };
@@ -2475,47 +2677,25 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   private finalizarSalvarExames(): void {
-    console.log('💾 [FINALIZAR SALVAR] Iniciando finalização do salvamento de exames');
-    console.log('💾 [FINALIZAR SALVAR] Exames temp (antes de salvar):', [...this.examesEditandoTemp]);
+    console.log('💾 [FINALIZAR SALVAR] Iniciando finalização');
     
-    // Atualizar os exames do paciente na lista principal
+    // ✅ Atualizar APENAS o paciente específico na lista (sem recarregar tudo)
     const index = this.todosPacientes.findIndex(
       (p) => p.id === this.pacienteEditandoExames!.id
     );
     
-    console.log('🔍 [FINALIZAR SALVAR] Index do paciente em todosPacientes:', index);
-    
     if (index > -1) {
-      console.log('🔄 [FINALIZAR SALVAR] Exames ANTES da atualização:', [...(this.todosPacientes[index].exames || [])]);
+      console.log('🔄 [FINALIZAR SALVAR] Atualizando exames do paciente index:', index);
       
-      // Criar uma cópia limpa dos exames para evitar duplicação
-      const examesUnicos = new Map<number, ExameDetalhado>();
-      this.examesEditandoTemp.forEach(exame => {
-        if (exame.iD_EXAME && !examesUnicos.has(exame.iD_EXAME)) {
-          examesUnicos.set(exame.iD_EXAME, { ...exame });
-        } else if (exame.iD_EXAME) {
-          console.warn('⚠️ [FINALIZAR SALVAR] Exame duplicado detectado (ignorado):', exame.iD_EXAME, exame.desC_EXAME);
-        }
-      });
+      // Atualizar diretamente o objeto (referência) - NÃO recria a lista
+      this.todosPacientes[index].exames = [...this.examesEditandoTemp];
       
-      console.log('🔢 [FINALIZAR SALVAR] Exames únicos após limpeza:', examesUnicos.size);
-      
-      this.todosPacientes[index].exames = Array.from(examesUnicos.values());
-      console.log('✅ [FINALIZAR SALVAR] Exames DEPOIS da atualização:', [...this.todosPacientes[index].exames]);
+      console.log('✅ [FINALIZAR SALVAR] Exames atualizados:', this.todosPacientes[index].exames);
     }
-
-    // Atualiza também a lista exibida na página atual (evita necessidade de F5)
-    this.atualizarPacientesDaPagina();
-    console.log('🔄 [FINALIZAR SALVAR] View atualizada (atualizarPacientesDaPagina chamado)');
-
-    // Notifica outros componentes que os exames deste paciente foram atualizados
-    const cpf = this.pacienteEditandoExames?.cpf ?? null;
-    console.log('📢 [FINALIZAR SALVAR] Notificando outros componentes - CPF:', cpf);
-    this.pacienteService.notifyPacienteExamesAtualizados(cpf);
 
     this.salvandoExames = false;
     alert('✅ Exames atualizados com sucesso!');
-    console.log('✅ [FINALIZAR SALVAR] Processo concluído com sucesso');
+    console.log('✅ [FINALIZAR SALVAR] Concluído');
     this.cancelarEdicaoExames();
   }
 

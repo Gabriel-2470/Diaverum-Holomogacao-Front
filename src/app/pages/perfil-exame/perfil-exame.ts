@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { map, debounceTime, distinctUntilChanged, catchError } from 'rxjs/operators';
-import { Subject, forkJoin, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
 
@@ -50,7 +50,8 @@ export class PerfilExame implements OnInit {
 
   nomePerfil = '';
   responsavel = '';
-  termoBusca = '';
+  buscaExameCodigo = '';
+  buscaExameNome = '';
 
   examesDisponiveis: Exame[] = [];
   examesSelecionados: Exame[] = [];
@@ -67,7 +68,7 @@ export class PerfilExame implements OnInit {
   carregandoMais = false;
   erroCarregamento = '';
 
-  private buscaSubject = new Subject<string>();
+  private timeoutBusca: any;
 
   constructor(
     private router: Router,
@@ -85,16 +86,6 @@ export class PerfilExame implements OnInit {
 
     this.carregarExames();
     this.carregarUnidades();
-
-    // Configura busca com debounce
-    this.buscaSubject.pipe(debounceTime(500), distinctUntilChanged()).subscribe((termo) => {
-      if (termo.trim().length >= 2) {
-        this.buscarExames(termo.trim());
-      } else {
-        this.resetarPaginacao();
-        this.carregarExames();
-      }
-    });
 
     this.route.params.subscribe((params) => {
       if (params['id']) {
@@ -217,21 +208,40 @@ export class PerfilExame implements OnInit {
     });
   }
 
-  buscarExames(termo: string, pagina: number = 1): void {
-    if (pagina === 1) {
-      this.carregandoExames = true;
+  buscarExames(resetPagina: boolean = true): void {
+    // Se resetar, limpar lista e voltar à página 1
+    if (resetPagina) {
+      this.paginaAtual = 1;
       this.examesDisponiveis = [];
+      this.carregandoExames = true;
     } else {
       this.carregandoMais = true;
     }
 
     this.erroCarregamento = '';
 
-    // Agora o backend filtra! Busca direto com filtro
-    const params = new HttpParams()
-      .set('pagina', pagina.toString())
-      .set('tamanhoPagina', '10')
-      .set('filtro', termo);
+    const termoCodigo = this.buscaExameCodigo?.trim() || '';
+    const termoNome = this.buscaExameNome?.trim() || '';
+
+    // Se não tiver busca, limpar resultados
+    if (!termoCodigo && !termoNome) {
+      this.examesDisponiveis = [];
+      this.carregandoExames = false;
+      this.totalRegistros = 0;
+      this.totalPaginas = 0;
+      return;
+    }
+
+    let params = new HttpParams()
+      .set('pagina', this.paginaAtual.toString())
+      .set('tamanhoPagina', '50');
+
+    if (termoCodigo) {
+      params = params.set('filtroCodigo', termoCodigo);
+    }
+    if (termoNome) {
+      params = params.set('filtroNome', termoNome);
+    }
 
     this.http.get<ExamesResponse>(`${this.apiUrl}/exames`, { params }).subscribe({
       next: (response) => {
@@ -246,7 +256,7 @@ export class PerfilExame implements OnInit {
           material: dto.material || 'Não especificado',
         }));
 
-        if (pagina === 1) {
+        if (resetPagina) {
           this.examesDisponiveis = novosExames;
         } else {
           this.examesDisponiveis = [...this.examesDisponiveis, ...novosExames];
@@ -254,7 +264,6 @@ export class PerfilExame implements OnInit {
 
         this.totalRegistros = response.paginacao.totalRegistros;
         this.totalPaginas = response.paginacao.totalPaginas;
-        this.paginaAtual = pagina;
         this.carregandoExames = false;
         this.carregandoMais = false;
       },
@@ -305,16 +314,52 @@ export class PerfilExame implements OnInit {
 
     // Quando chegar a 80% do scroll e tiver mais páginas
     if (scrollPercent > 0.8 && !this.carregandoMais && this.paginaAtual < this.totalPaginas) {
-      if (this.termoBusca.trim()) {
-        this.buscarExames(this.termoBusca, this.paginaAtual + 1);
+      const termoCodigo = this.buscaExameCodigo?.trim() || '';
+      const termoNome = this.buscaExameNome?.trim() || '';
+      
+      if (termoCodigo || termoNome) {
+        this.paginaAtual++;
+        this.buscarExames(false);
       } else {
         this.carregarProximaPagina();
       }
     }
   }
 
-  onBuscaChange(): void {
-    this.buscaSubject.next(this.termoBusca);
+  onBuscaExameCodigoChange(valor: string): void {
+    this.buscaExameCodigo = valor || '';
+    if (this.buscaExameNome) {
+      this.buscaExameNome = '';
+    }
+    this.resetarPaginacao();
+    
+    // Limpar timeout anterior
+    if (this.timeoutBusca) {
+      clearTimeout(this.timeoutBusca);
+    }
+    
+    // Debounce de 500ms
+    this.timeoutBusca = setTimeout(() => {
+      this.buscarExames(true);
+    }, 500);
+  }
+
+  onBuscaExameNomeChange(valor: string): void {
+    this.buscaExameNome = valor || '';
+    if (this.buscaExameCodigo) {
+      this.buscaExameCodigo = '';
+    }
+    this.resetarPaginacao();
+    
+    // Limpar timeout anterior
+    if (this.timeoutBusca) {
+      clearTimeout(this.timeoutBusca);
+    }
+    
+    // Debounce de 500ms
+    this.timeoutBusca = setTimeout(() => {
+      this.buscarExames(true);
+    }, 500);
   }
 
   carregarPerfil(id: number): void {

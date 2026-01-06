@@ -179,9 +179,34 @@
             </svg>
             <input
               type="text"
-              [(ngModel)]="termoBusca"
-              (ngModelChange)="onBuscaChange()"
-              placeholder="Pesquisar por nome ou código"
+              [(ngModel)]="buscaExameCodigo"
+              (ngModelChange)="onBuscaExameCodigoChange($event)"
+              placeholder="Pesquisar por código"
+              class="input-busca"
+            />
+          </div>
+
+          <div class="campo-busca">
+            <svg
+              class="icone-busca"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="buscaExameNome"
+              (ngModelChange)="onBuscaExameNomeChange($event)"
+              placeholder="Pesquisar por nome"
               class="input-busca"
             />
           </div>

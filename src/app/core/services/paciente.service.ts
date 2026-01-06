@@ -169,6 +169,9 @@ export class PacienteService {
   /**
    * Remove pacientes da listagem por CPF (soft delete)
    */
+  // ⚠️ MÉTODO LEGADO - USA APENAS CPF (SEM ID_AGENDAMENTO)
+  // ❌ NÃO UTILIZAR - Remove TODOS os agendamentos dos CPFs fornecidos
+  // ✅ Use: removerPorAgendamentos(agendamentos: {idAgendamento, cpf}[])
   removerPacientesPorCpf(cpfs: string[]): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/agenda-detalhe/remover-por-cpf`, {
       body: { cpfs }
@@ -211,20 +214,32 @@ export class PacienteService {
     );
   }
 
-  /**
-   * Marca agendamentos como enviados
-   */
-  marcarAgendamentosEnviados(cpfs: string[]): Observable<any> {
+  // ⚠️ MÉTODO LEGADO - USA APENAS CPF (SEM ID_AGENDAMENTO)
+  // ❌ NÃO UTILIZAR - Marca TODOS os agendamentos dos CPFs como enviados
+  // ✅ Use: marcarAgendamentosEnviados(agendamentos: {idAgendamento, cpf}[])
+  marcarAgendamentosEnviadosPorCpf(cpfs: string[]): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/pacientes/marcar-enviados`, { cpfs });
   }
 
   /**
-   * Processa pacientes pendentes via endpoint de sincronização
-   * Envia os CPFs para /api/db-sync/processa-pendentes
-   * O backend espera receber List<string> ids diretamente (array de strings)
+   * ⚠️ LEGACY: Processa pacientes pendentes via endpoint antigo
+   * Envia apenas CPFs para /api/db-sync/processa-pendentes
+   * PROBLEMA: Transfere TODOS os agendamentos daquele CPF
    */
   processarPendentes(cpfs: string[]): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/db-sync/processa-pendentes`, cpfs);
+  }
+
+  /**
+   * 🆕 NOVO: Processa transferência usando chave composta (ID_AGENDAMENTO + CPF)
+   * Envia para /api/db-sync/processa-pendentes-v2
+   * Transfere APENAS os agendamentos específicos selecionados
+   * Este é o método correto para transferência via SOAP (DBSync)
+   */
+  processarPendentesV2(
+    agendamentos: { idAgendamento: number; cpf: string }[]
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/db-sync/processa-pendentes-v2`, agendamentos);
   }
 
   // ==================== AGENDA DETALHE ====================
@@ -289,41 +304,11 @@ export class PacienteService {
   }
 
   /**
-   * Remove um exame de um paciente (DELETE)
-   */
-  removerExameDoPaciente(cpf: string, idExame: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}/exame/${idExame}`).pipe(
-      // Notificar automaticamente quando um exame for removido
-      tap(() => this.notifyPacienteExamesAtualizados(cpf))
-    );
-  }
-
-  /**
-   * Adiciona um exame a um paciente existente (POST)
-   */
-  adicionarExameAoPaciente(
-    cpf: string,
-    idExame: number,
-    cdExame: string,
-    cdExameDb: string,
-    descExame: string,
-    idUnidade: number = 3039
-  ): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}/exame`, {
-      idExame,
-      cdExame,
-      cdExameDb,
-      descExame,
-      idUnidade,
-    }).pipe(
-      // Notificar automaticamente quando um exame for adicionado
-      tap(() => this.notifyPacienteExamesAtualizados(cpf))
-    );
-  }
-
-  /**
    * Busca os exames de um paciente por CPF
    */
+  // ⚠️ MÉTODO LEGADO - USA APENAS CPF (SEM ID_AGENDAMENTO)
+  // ❌ NÃO UTILIZAR - Retorna exames de TODOS os agendamentos do CPF misturados
+  // ✅ Use: buscarAgendaDetalhes(idUnidade) que retorna dados consolidados por agendamento
   buscarExamesDoPaciente(cpf: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/agenda-detalhe/paciente/${cpf}`);
   }
@@ -630,6 +615,71 @@ export class PacienteService {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+    });
+  }
+
+  // ==================== 🆕 OPERAÇÕES COM ID_AGENDAMENTO + CPF ====================
+
+  /**
+   * 🆕 Remove um exame de um agendamento específico (chave composta: idAgendamento + cpf + idExame)
+   */
+  removerExameDoPaciente(idAgendamento: number, cpf: string, idExame: number): Observable<any> {
+    return this.http.delete(
+      `${this.apiUrl}/agenda-detalhe/agendamento/${idAgendamento}/paciente/${cpf}/exame/${idExame}`
+    );
+  }
+
+  /**
+   * 🆕 Adiciona um exame a um agendamento específico (chave composta: idAgendamento + cpf)
+   */
+  adicionarExameAoPaciente(
+    idAgendamento: number,
+    cpf: string,
+    idExame: number,
+    cdExame?: string,
+    cdExameDb?: string,
+    descExame?: string,
+    idUnidade?: number
+  ): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/agenda-detalhe/agendamento/${idAgendamento}/paciente/${cpf}/exame`,
+      {
+        idExame,
+        cdExame,
+        cdExameDb,
+        descExame,
+        idUnidade,
+      }
+    );
+  }
+
+  /**
+   * 🆕 Marca agendamentos específicos como enviados (IND_REG_ENVIADO = 1) - TRANSFERÊNCIA
+   * Recebe lista de {idAgendamento, cpf} para precisão cirúrgica
+   */
+  marcarAgendamentosEnviados(
+    agendamentos: { idAgendamento: number; cpf: string }[]
+  ): Observable<any> {
+    return this.http.post(`${this.apiUrl}/agenda-detalhe/marcar-enviados`, {
+      agendamentos: agendamentos.map((a) => ({
+        idAgendamento: a.idAgendamento,
+        cpf: a.cpf,
+      })),
+    });
+  }
+
+  /**
+   * 🆕 Remove agendamentos específicos usando chave composta (STATUS_ENVIO = 1) - SOFT DELETE
+   * Usa o endpoint de remover-lote
+   */
+  removerPorAgendamentos(
+    agendamentos: { idAgendamento: number; cpf: string }[]
+  ): Observable<any> {
+    return this.http.post(`${this.apiUrl}/agenda-detalhe/remover-lote`, {
+      agendamentos: agendamentos.map((a) => ({
+        idAgendamento: a.idAgendamento,
+        cpf: a.cpf,
+      })),
     });
   }
 }

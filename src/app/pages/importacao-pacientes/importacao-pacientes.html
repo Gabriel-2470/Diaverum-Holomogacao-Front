@@ -348,17 +348,17 @@
       <div
         class="paciente-card"
         [class.expandido]="paciente.expandido"
-        [class.selecionado]="isPacienteSelecionado(paciente.cpf)"
+        [class.selecionado]="isPacienteSelecionado(paciente)"
       >
         <div class="paciente-row">
           <div class="col-checkbox">
             <input
               type="checkbox"
               class="checkbox-paciente"
-              [checked]="isPacienteSelecionado(paciente.cpf)"
+              [checked]="isPacienteSelecionado(paciente)"
               [disabled]="paciente.status === 'enviado'"
               [title]="paciente.status === 'enviado' ? 'Paciente já enviado - não pode ser selecionado' : 'Selecionar paciente'"
-              (change)="togglePacienteSelecionado(paciente.cpf)"
+              (change)="togglePacienteSelecionado(paciente)"
             />
           </div>
 
