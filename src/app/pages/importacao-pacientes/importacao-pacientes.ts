@@ -42,7 +42,7 @@ interface PacienteUI {
   diabetes: boolean;
   tratamento: string;
   horarioColeta: string;
-  status: 'pendente' | 'enviado' | 'erro' | 'correto' | null; // null = não transferido ainda
+  status: 'pendente' | 'enviado' | 'erro' | 'correto' | 'agendado' | null; // null = não transferido ainda
   expandido: boolean;
   menuAberto?: boolean;
   exames?: ExameDetalhado[];
@@ -84,7 +84,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   termoBusca = '';
 
   // Filtros avançados
-  filtroStatus: 'todos' | 'enviados' | 'pendentes' = 'todos';
+  filtroStatus: 'todos' | 'enviados' | 'pendentes' | 'agendados' = 'todos';
   filtroTipoData: 'cadastro' | 'coleta' = 'cadastro';
   filtroDataInicio: string = '';
   filtroDataFim: string = '';
@@ -111,6 +111,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   progressoExclusao = { atual: 0, total: 0 }; // progresso da exclusão
   transferindo = false; // indica se está transferindo pacientes
   progressoTransferencia = { atual: 0, total: 0 }; // progresso da transferência
+  agendando = false; // indica se está agendando pacientes
+  mostrarConfirmacaoAgendamento = false; // exibe overlay de sucesso após agendar
+  totalAgendados = 0; // quantidade de pacientes agendados
 
   // Edição
   pacienteEditando: PacienteUI | null = null;
@@ -325,6 +328,14 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         const enviado = reg.inD_REG_ENVIADO ?? reg.IND_REG_ENVIADO ?? false;
         return enviado === true || enviado === 1;
       });
+      const estaAgendado = !todosEnviados && registros.some((reg: any) => {
+        const s = reg.statuS_ENVIO ?? reg.STATUS_ENVIO ?? reg.statusEnvio ?? null;
+        return s === 4 || s === '4';
+      });
+      const temErro = !todosEnviados && registros.some((reg: any) => {
+        const s = reg.statuS_ENVIO ?? reg.STATUS_ENVIO ?? reg.statusEnvio ?? null;
+        return s === 3 || s === '3';
+      });
 
       // Normalizar diabetes
       let diabetesBoolean = false;
@@ -399,7 +410,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         diabetes: diabetesBoolean,
         tratamento: tratamento, // Extraído dos dados do backend
         horarioColeta: dataAgendamento,
-        status: todosEnviados ? 'enviado' : 'correto',
+        status: todosEnviados ? 'enviado' : (temErro ? 'erro' : (estaAgendado ? 'agendado' : 'correto')),
         expandido: false,
         exames: examesDetalhados,
         podeEditar: !todosEnviados,
@@ -552,6 +563,14 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         const enviado = reg.inD_REG_ENVIADO ?? reg.IND_REG_ENVIADO ?? false;
         return enviado === true || enviado === 1;
       });
+      const estaAgendado = !todosEnviados && registros.some((reg: any) => {
+        const s = reg.statuS_ENVIO ?? reg.STATUS_ENVIO ?? reg.statusEnvio ?? null;
+        return s === 4 || s === '4';
+      });
+      const temErro = !todosEnviados && registros.some((reg: any) => {
+        const s = reg.statuS_ENVIO ?? reg.STATUS_ENVIO ?? reg.statusEnvio ?? null;
+        return s === 3 || s === '3';
+      });
 
       // Normalizar diabetes
       let diabetesBoolean = false;
@@ -622,7 +641,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         diabetes: diabetesBoolean,
         tratamento: tratamento,
         horarioColeta: dataAgendamento,
-        status: todosEnviados ? 'enviado' : 'correto',
+        status: todosEnviados ? 'enviado' : (temErro ? 'erro' : (estaAgendado ? 'agendado' : 'correto')),
         expandido: false,
         exames: examesDetalhados,
         podeEditar: !todosEnviados,
@@ -865,6 +884,14 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           const enviado = ex.inD_REG_ENVIADO ?? ex.IND_REG_ENVIADO ?? ex.ind_reg_enviado ?? false;
           return enviado === true || enviado === 1;
         });
+      const estaAgendado = !todosExamesEnviados && examesDetalhes.some((ex: any) => {
+        const s = ex.statuS_ENVIO ?? ex.STATUS_ENVIO ?? ex.statusEnvio ?? null;
+        return s === 4 || s === '4';
+      });
+      const temErro = !todosExamesEnviados && examesDetalhes.some((ex: any) => {
+        const s = ex.statuS_ENVIO ?? ex.STATUS_ENVIO ?? ex.statusEnvio ?? null;
+        return s === 3 || s === '3';
+      });
 
       return {
         id: p.iD_PACIENTE || p.id,
@@ -880,7 +907,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
           p.tratamento ||
           '',
         horarioColeta: dataAgendamento,
-        status: todosExamesEnviados ? ('enviado' as const) : ('correto' as const),
+        status: todosExamesEnviados ? ('enviado' as const) : (temErro ? ('erro' as const) : (estaAgendado ? ('agendado' as const) : ('correto' as const))),
         expandido: false,
         exames: examesDetalhados,
         podeEditar: !todosExamesEnviados, // Bloqueia edição se todos exames já foram enviados
@@ -1316,6 +1343,22 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   }
 
   /**
+   * Formatar data de ISO (YYYY-MM-DD) para pt-BR (DD/MM/YYYY)
+   */
+  private formatarDataParaBR(data: string): string {
+    if (!data || data.trim() === '') {
+      return '';
+    }
+    // Se está no formato ISO (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      const [ano, mes, dia] = data.split('-');
+      return `${dia}/${mes}/${ano}`;
+    }
+    // Se já está em outro formato, retorna como está
+    return data;
+  }
+
+  /**
    * Formata data para o formato ISO (YYYY-MM-DD) que o backend aceita
    * Aceita formatos: DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY, M/D/YY, etc.
    */
@@ -1538,6 +1581,62 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
         this.progressoTransferencia = { atual: 0, total: 0 };
       },
     });
+  }
+
+  abrirAgendamento(): void {
+    const pacientes = this.getPacientesSelecionados();
+
+    if (pacientes.length === 0) {
+      alert('Nenhum paciente selecionado para agendamento.');
+      return;
+    }
+
+    const semIdAgendamento = pacientes.filter(p => !p.idAgendamento);
+    if (semIdAgendamento.length > 0) {
+      console.error('❌ Pacientes sem idAgendamento:', semIdAgendamento);
+      alert('Erro: Alguns pacientes não têm ID de agendamento. Recarregue a página e tente novamente.');
+      return;
+    }
+
+    this.agendando = true;
+
+    const agendamentos = pacientes.map((p) => ({
+      idAgendamento: p.idAgendamento!,
+      cpf: p.cpf
+    }));
+
+    console.log('📅 [abrirAgendamento] Agendando', agendamentos.length, 'agendamentos');
+
+    this.pacienteService.agendarProcessamento(agendamentos).subscribe({
+      next: (res: any) => {
+        console.log('✅ [abrirAgendamento] Resposta:', res);
+        this.agendando = false;
+        this.totalAgendados = pacientes.length;
+        this.mostrarConfirmacaoAgendamento = true;
+        pacientes.forEach((paciente) => {
+          paciente.status = 'agendado';
+        });
+        this.pacientesSelecionados.clear();
+      },
+      error: (err: any) => {
+        console.error('❌ [abrirAgendamento] Erro:', err);
+        this.agendando = false;
+        let mensagemErro = 'Erro ao agendar os pacientes.';
+        if (err?.status === 502) {
+          mensagemErro = 'Erro 502: O servidor não está respondendo.';
+        } else if (err?.status === 0) {
+          mensagemErro = 'Erro de conexão: Não foi possível conectar ao servidor.';
+        } else if (err?.status === 500) {
+          mensagemErro = 'Erro 500: Erro interno no servidor.';
+        }
+        alert(`❌ ${mensagemErro}\n\nVerifique o console (F12) para mais detalhes.`);
+      },
+    });
+  }
+
+  fecharConfirmacaoAgendamento(): void {
+    this.mostrarConfirmacaoAgendamento = false;
+    this.totalAgendados = 0;
   }
 
   getPacientesSelecionados() {
@@ -2145,7 +2244,9 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     if (this.filtroStatus === 'enviados') {
       resultado = resultado.filter((p) => p.status === 'enviado');
     } else if (this.filtroStatus === 'pendentes') {
-      resultado = resultado.filter((p) => p.status !== 'enviado');
+      resultado = resultado.filter((p) => p.status !== 'enviado' && p.status !== 'agendado');
+    } else if (this.filtroStatus === 'agendados') {
+      resultado = resultado.filter((p) => p.status === 'agendado');
     }
 
     // Filtro por data (cadastro OU coleta, conforme selecionado)
@@ -2180,6 +2281,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     switch (this.filtroStatus) {
       case 'enviados': return 'Transferidos';
       case 'pendentes': return 'Pendentes';
+      case 'agendados': return 'Agendados';
       default: return 'Todos';
     }
   }
@@ -2194,7 +2296,7 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   /**
    * Aplica filtro de status e reseta a paginação
    */
-  aplicarFiltroStatus(status: 'todos' | 'enviados' | 'pendentes'): void {
+  aplicarFiltroStatus(status: 'todos' | 'enviados' | 'pendentes' | 'agendados'): void {
     this.filtroStatus = status;
     this.paginaAtual = 1;
     this.atualizarPaginasVisiveis();
@@ -2241,10 +2343,11 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
     const total = this.todosPacientes.length;
     const enviados = this.todosPacientes.filter((p) => p.status === 'enviado').length;
     const erros = this.todosPacientes.filter((p) => p.status === 'erro').length;
+    const agendados = this.todosPacientes.filter((p) => p.status === 'agendado').length;
     // Pendentes = pacientes que ainda não foram transferidos E não têm erros
     const pendentes = this.todosPacientes.filter((p) => p.status === null || p.status === 'correto').length;
 
-    return { total, enviados, pendentes, erros };
+    return { total, enviados, pendentes, erros, agendados };
   }
 
   transferirTodos(): void {}

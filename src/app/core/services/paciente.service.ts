@@ -242,6 +242,12 @@ export class PacienteService {
     return this.http.post<any>(`${this.apiUrl}/db-sync/processa-pendentes-v2`, agendamentos);
   }
 
+  agendarProcessamento(
+    agendamentos: { idAgendamento: number; cpf: string }[]
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/db-sync/agendar-processamento`, agendamentos);
+  }
+
   // ==================== AGENDA DETALHE ====================
 
   /**

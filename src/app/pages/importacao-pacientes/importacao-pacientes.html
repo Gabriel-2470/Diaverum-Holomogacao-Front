@@ -18,6 +18,12 @@
             <span class="stat-label">Pendente para transferência</span>
           </div>
 
+          <div class="stat-item stat-agendado">
+            <div class="stat-dot"></div>
+            <span class="stat-numero">{{ estatisticas.agendados }}</span>
+            <span class="stat-label">Agendados</span>
+          </div>
+
           <div class="stat-item stat-erro">
             <div class="stat-dot"></div>
             <span class="stat-numero">{{ estatisticas.erros }}</span>
@@ -32,6 +38,35 @@
       </div>
 
       <div class="action-buttons">
+        <button
+          class="btn btn-agendar"
+          (click)="abrirAgendamento()"
+          [disabled]="agendando || transferindo"
+          [class.loading]="agendando"
+        >
+          @if (agendando) {
+            <div class="spinner-transferencia"></div>
+            <span>AGENDANDO...</span>
+          } @else {
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>AGENDAR</span>
+          }
+        </button>
         <button
           class="btn btn-transferencia"
           (click)="abrirTransferencia()"
@@ -172,6 +207,14 @@
         >
           <span class="status-dot-filtro pendente"></span>
           Pendentes
+        </button>
+        <button
+          class="btn-filtro-status"
+          [class.ativo]="filtroStatus === 'agendados'"
+          (click)="aplicarFiltroStatus('agendados')"
+        >
+          <span class="status-dot-filtro agendado"></span>
+          Agendados
         </button>
         <button
           class="btn-filtro-status"
@@ -894,8 +937,8 @@
           </div>
 
           <div class="form-group">
-            <label>Data de Nascimento</label>
-            <input type="text" [(ngModel)]="pacienteEditando.data" name="dataNascimento" />
+            <label>Data Importação</label>
+            <input type="text" [(ngModel)]="pacienteEditando.data" name="dataImportacao" readonly disabled />
           </div>
         </div>
 
@@ -1179,6 +1222,41 @@
     <div class="spinner-bloqueio"></div>
     <h3>Transferindo Pacientes</h3>
     <p class="aviso-texto">Por favor, aguarde. Não feche esta página.</p>
+  </div>
+</div>
+}
+
+<!-- Overlay de bloqueio durante agendamento -->
+@if (agendando) {
+<div class="overlay-bloqueio">
+  <div class="bloqueio-content">
+    <div class="spinner-bloqueio spinner-bloqueio--agendar"></div>
+    <h3>Agendando Pacientes</h3>
+    <p class="aviso-texto">Por favor, aguarde. Não feche esta página.</p>
+  </div>
+</div>
+}
+
+<!-- Overlay de confirmação de agendamento -->
+@if (mostrarConfirmacaoAgendamento) {
+<div class="overlay-bloqueio" (click)="fecharConfirmacaoAgendamento()">
+  <div class="bloqueio-content agendamento-confirmacao" (click)="$event.stopPropagation()">
+    <div class="icone-confirmacao">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+        <polyline points="9 16 11 18 15 14"></polyline>
+      </svg>
+    </div>
+    <h3>Transferência Agendada!</h3>
+    <p class="aviso-confirmacao">
+      {{ totalAgendados }} paciente{{ totalAgendados !== 1 ? 's foram' : ' foi' }} agendado{{ totalAgendados !== 1 ? 's' : '' }} com sucesso para transferência.
+    </p>
+    <button class="btn-fechar-confirmacao" (click)="fecharConfirmacaoAgendamento()">
+      Fechar
+    </button>
   </div>
 </div>
 }

@@ -51,6 +51,10 @@
   background-color: #f59e0b; /* Amarelo = Informações pendentes */
 }
 
+.stat-agendado .stat-dot {
+  background-color: #2563eb; /* Azul = Agendado para transferência */
+}
+
 .stat-erro .stat-dot {
   background-color: #ef4444;
 }
@@ -126,6 +130,27 @@
 
   &:hover {
     background: #d15a1e;
+  }
+}
+
+.btn-agendar {
+  background: #2563eb;
+  color: white;
+  position: relative;
+  min-width: 150px;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  &:disabled {
+    opacity: 0.85;
+    cursor: not-allowed;
+  }
+
+  &.loading {
+    background: #1d4ed8;
+    pointer-events: none;
   }
 }
 
@@ -300,6 +325,10 @@
 
   &.pendente {
     background: #f59e0b;
+  }
+
+  &.agendado {
+    background: #2563eb;
   }
 
   &.enviado {
@@ -790,8 +819,14 @@
     background-color: #10b981; /* Verde = Enviado */
   }
 
-  &.status-pendente {
+  &.status-pendente,
+  &.status-correto,
+  &.status-null {
     background-color: #f59e0b; /* Amarelo = Pendente */
+  }
+
+  &.status-agendado {
+    background-color: #2563eb; /* Azul = Agendado */
   }
 
   &.status-erro {
@@ -1616,12 +1651,22 @@
     }
   }
 
-  &.status-pendente {
+  &.status-pendente,
+  &.status-correto {
     border-left-color: #f59e0b;
     background: #fffbf0; /* Amarelo = Pendente */
 
     .preview-status-dot {
       background: #f59e0b;
+    }
+  }
+
+  &.status-agendado {
+    border-left-color: #2563eb;
+    background: #eff6ff; /* Azul claro = Agendado */
+
+    .preview-status-dot {
+      background: #2563eb;
     }
   }
 
@@ -2262,6 +2307,57 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
+
+  &--agendar {
+    border-top-color: #2563eb;
+  }
+}
+
+.agendamento-confirmacao {
+  h3 {
+    color: #1e293b;
+  }
+}
+
+.icone-confirmacao {
+  margin: 0 auto 8px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    stroke: #2563eb;
+  }
+}
+
+.aviso-confirmacao {
+  font-size: 15px;
+  color: #475569;
+  margin: 8px 0 24px 0;
+  line-height: 1.5;
+}
+
+.btn-fechar-confirmacao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 32px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: #1d4ed8;
+  }
 }
 
 .progresso-texto {
