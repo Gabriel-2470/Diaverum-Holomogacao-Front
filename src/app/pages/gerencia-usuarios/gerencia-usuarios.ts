@@ -106,16 +106,7 @@ export class GerenciaUsuarios implements OnInit {
     this.sucesso = '';
   }
 
-  abrirModalNovoAcesso(usuario: Usuario): void {
-    this.modoEdicao = false;
-    this.usuarioEditando = null;
-    this.formulario = { nomeUser: usuario.nome, acesso: '', senha: '', email: usuario.email, role: usuario.role };
-    this.mostrarModal = true;
-    this.erro = '';
-    this.sucesso = '';
-  }
-
-  abrirModalEdicao(usuario: Usuario): void {
+abrirModalEdicao(usuario: Usuario): void {
     this.modoEdicao = true;
     this.usuarioEditando = usuario;
     this.formulario = { nomeUser: usuario.nome, acesso: usuario.acesso || '', senha: '', email: usuario.email, role: usuario.role };
