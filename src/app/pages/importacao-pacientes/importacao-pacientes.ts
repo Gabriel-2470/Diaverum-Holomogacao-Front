@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HasRoleDirective } from '../../shared/directives/has-role.direcrive';
 import { Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import * as XLSX from 'xlsx';
@@ -60,7 +61,7 @@ interface ErroImportacao {
 @Component({
   selector: 'app-importacao-pacientes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HasRoleDirective],
   providers: [PacienteService, GruposExamesService, UnidadeService],
   templateUrl: './importacao-pacientes.html',
   styleUrl: './importacao-pacientes.scss',
@@ -153,72 +154,67 @@ export class ImportacaoPacientes implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Definir unidade do usuário: prioriza currentUser.idUnidade, depois unidadeSelecionada, depois unidadesUsuario
+    // Prioridade: 1º unidadeSelecionada (seletor ou auto-select), 2º currentUser.idUnidade, 3º unidadesUsuario
     try {
-      const rawUser = localStorage.getItem('currentUser');
-      if (rawUser) {
+      // 1º: unidadeSelecionada — escolha explícita do usuário, sempre prevalece
+      const rawSelecionada = localStorage.getItem('unidadeSelecionada');
+      if (rawSelecionada) {
         try {
-          const userObj = JSON.parse(rawUser) as any;
-          const idFromUser = userObj?.idUnidade ?? userObj?.IdUnidade ?? userObj?.ID_UNIDADE ?? null;
-          if (idFromUser != null) {
-            this.mostrarApenasUnidadeId = Number(idFromUser);
-            console.log('📍 Importação — usando currentUser.idUnidade:', this.mostrarApenasUnidadeId);
-            
-            // idUnidade = 0 significa consolidador (ver TODAS as clínicas)
-            if (this.mostrarApenasUnidadeId === 0) {
-              console.log('📍 Usuário consolidador (idUnidade = 0) - mostrando TODAS as clínicas');
-            }
+          const u = JSON.parse(rawSelecionada);
+          const id = u?.idUnidade ?? u?.IdUnidade ?? u?.iD_UNIDADE ?? u?.ID_UNIDADE ?? u?.id ?? null;
+          if (id != null) {
+            this.mostrarApenasUnidadeId = Number(id);
+            console.log('📍 Importação — unidadeSelecionada:', this.mostrarApenasUnidadeId);
           }
         } catch (e) {
-          console.warn('Importação — currentUser inválido no localStorage', e);
+          console.warn('Importação — unidadeSelecionada inválida no localStorage', e);
         }
       }
 
-      // Se não obteve via currentUser, tentar unidadeSelecionada / unidadesUsuario (legacy)
+      // 2º: currentUser.idUnidade — fallback para sessões sem unidadeSelecionada
       if (this.mostrarApenasUnidadeId == null) {
-        const raw = localStorage.getItem('unidadeSelecionada');
-        if (raw) {
-          const u = JSON.parse(raw);
-          const id = u?.idUnidade ?? u?.IdUnidade ?? u?.iD_UNIDADE ?? u?.ID_UNIDADE ?? u?.id ?? null;
-          this.mostrarApenasUnidadeId = id != null ? Number(id) : null;
-          console.log('📍 Importação — unidadeSelecionada carregada:', this.mostrarApenasUnidadeId);
-          
-          // idUnidade = 0 significa consolidador (ver TODAS as clínicas)
-          if (this.mostrarApenasUnidadeId === 0) {
-            console.log('📍 Usuário consolidador (idUnidade = 0) - mostrando TODAS as clínicas');
+        const rawUser = localStorage.getItem('currentUser');
+        if (rawUser) {
+          try {
+            const userObj = JSON.parse(rawUser) as any;
+            const idFromUser = userObj?.idUnidade ?? userObj?.IdUnidade ?? userObj?.ID_UNIDADE ?? null;
+            if (idFromUser != null) {
+              this.mostrarApenasUnidadeId = Number(idFromUser);
+              console.log('📍 Importação — currentUser.idUnidade:', this.mostrarApenasUnidadeId);
+            }
+          } catch (e) {
+            console.warn('Importação — currentUser inválido no localStorage', e);
           }
-        } else {
-          const unidadesRaw = localStorage.getItem('unidadesUsuario');
-          if (unidadesRaw) {
-            try {
-              const unidadesArr = JSON.parse(unidadesRaw) as any[];
-              if (Array.isArray(unidadesArr) && unidadesArr.length > 0) {
-                const unidadePadrao = unidadesArr.find((u) => u.UnidadePadrao || u.unidadePadrao || u.unidadePadrao === true) || unidadesArr[0];
-                const idFb = unidadePadrao?.IdUnidade ?? unidadePadrao?.idUnidade ?? unidadePadrao?.iD_UNIDADE ?? unidadePadrao?.ID_UNIDADE ?? unidadePadrao?.id ?? null;
-                this.mostrarApenasUnidadeId = idFb != null ? Number(idFb) : null;
-                console.log('📍 Importação — fallback unidade do usuário via unidadesUsuario:', this.mostrarApenasUnidadeId);
-                
-                // idUnidade = 0 significa consolidador (ver TODAS as clínicas)
-                if (this.mostrarApenasUnidadeId === 0) {
-                  console.log('📍 Usuário consolidador (idUnidade = 0) - mostrando TODAS as clínicas');
-                }
+        }
+      }
+
+      // 3º: unidadesUsuario — último fallback
+      if (this.mostrarApenasUnidadeId == null) {
+        const unidadesRaw = localStorage.getItem('unidadesUsuario');
+        if (unidadesRaw) {
+          try {
+            const unidadesArr = JSON.parse(unidadesRaw) as any[];
+            if (Array.isArray(unidadesArr) && unidadesArr.length > 0) {
+              const unidadePadrao = unidadesArr.find((u) => u.UnidadePadrao || u.unidadePadrao) || unidadesArr[0];
+              const idFb = unidadePadrao?.IdUnidade ?? unidadePadrao?.idUnidade ?? unidadePadrao?.iD_UNIDADE ?? unidadePadrao?.ID_UNIDADE ?? unidadePadrao?.id ?? null;
+              if (idFb != null) {
+                this.mostrarApenasUnidadeId = Number(idFb);
+                console.log('📍 Importação — unidadesUsuario fallback:', this.mostrarApenasUnidadeId);
               } else {
                 this.mostrarApenasUnidadeId = null;
-                console.warn('⚠️ Importação — unidadesUsuario está vazia');
               }
-            } catch (e) {
+            } else {
               this.mostrarApenasUnidadeId = null;
-              console.error('❌ Importação — erro ao parsear unidadesUsuario do localStorage', e);
             }
-          } else {
+          } catch (e) {
             this.mostrarApenasUnidadeId = null;
-            console.warn('⚠️ Importação — nenhuma unidade do usuário encontrada no localStorage');
           }
+        } else {
+          this.mostrarApenasUnidadeId = null;
         }
       }
     } catch (e) {
       this.mostrarApenasUnidadeId = null;
-      console.error('❌ Importação — erro ao ler unidade do localStorage', e);
     }
 
     this.carregarPerfis();

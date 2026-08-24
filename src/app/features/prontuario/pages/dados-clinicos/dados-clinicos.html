@@ -1,0 +1,216 @@
+@if (carregando()) {
+  <pr-skeleton [linhas]="8" altura="16px" />
+} @else if (erro()) {
+  <pr-estado-vazio icone="!" titulo="Não foi possível carregar" descricao="Erro ao consultar o sistema de origem." />
+} @else {
+  <!-- Dados Gerais -->
+  <section class="nx-group">
+    <div class="nx-group-head">Dados Gerais</div>
+    <div class="nx-group-body dc__gerais nx-fields nx-fields--2">
+      <div class="nx-field"><span class="nx-label">ABO/Rh:</span><span class="nx-input">{{ cadastro()?.aboRh || '—' }}</span></div>
+      <div class="nx-field"><span class="nx-label">Altura:</span><span class="nx-input tabular">{{ cadastro()?.alturaCm != null ? cadastro()!.alturaCm + ' cm' : '—' }}</span></div>
+      <div class="nx-field"><span class="nx-label">Peso Seco:</span><span class="nx-input tabular">{{ cadastro()?.pesoSecoKg != null ? cadastro()!.pesoSecoKg + ' kg' : '—' }}</span></div>
+      <div class="nx-field"><span class="nx-label">Diurese:</span><span class="nx-input tabular">{{ cadastro()?.diureseMl != null ? cadastro()!.diureseMl + ' mL' : '—' }}</span></div>
+      <div class="nx-field"><span class="nx-label">Início TRS:</span><span class="nx-input tabular">{{ (cadastro()?.dataInicioTrs | date: 'dd/MM/yyyy') || '—' }}</span></div>
+      <div class="nx-field nx-field--wide">
+        <span class="nx-label">Diag. Base:</span>
+        <span class="nx-input nx-input--bloco">
+          @if (diagBase(); as d) { {{ d.cid10 }} — {{ d.descricao || '—' }} } @else { — }
+        </span>
+      </div>
+      <div class="nx-field nx-field--wide">
+        <span class="nx-label">Observações:</span>
+        <span class="nx-input nx-input--bloco">{{ observacoes() || '—' }}</span>
+      </div>
+      <div class="nx-field nx-field--wide">
+        <span class="nx-label">Alertas:</span>
+        <span class="nx-input nx-input--bloco dc__alerta">{{ alertas() || '—' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Marcadores Virais (dado real da migração; leitura pura) -->
+  <section class="nx-group">
+    <div class="nx-group-head">Marcadores Virais</div>
+    <div class="nx-group-body">
+      @if (!temMarcadores()) {
+        <div class="nx-aviso-origem">⚠ Este paciente não possui marcadores virais registrados no histórico migrado.</div>
+      }
+      <div class="dc__marcadores">
+        @for (m of marcadoresView(); track m.rotulo) {
+          <fieldset class="dc__marcador">
+            <legend>
+              {{ m.rotulo }}
+              @if (m.resultadoRotulo) {
+                <span class="dc__marcador-res">{{ m.resultadoRotulo }}</span>
+              }
+            </legend>
+            @for (o of opcoes; track o) {
+              <label class="dc__opt" [class.dc__opt--sel]="o === m.opcaoSelecionada">
+                <input type="radio" [name]="m.rotulo" [checked]="o === m.opcaoSelecionada" disabled />
+                <span>{{ o }}</span>
+              </label>
+            }
+            @if (m.observacao) {
+              <p class="dc__marcador-obs" [title]="m.dataRegistro ? (m.dataRegistro | date: 'dd/MM/yyyy') : ''">{{ m.observacao }}</p>
+            }
+          </fieldset>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Vacinas (dado real da migração) -->
+  <section class="nx-group">
+    <div class="nx-group-head">Vacinas</div>
+    <div class="nx-group-body">
+      @if (vacinas().length === 0) {
+        <div class="nx-aviso-origem">⚠ Este paciente não possui vacinas registradas no histórico migrado.</div>
+      }
+      <table class="nx-grid">
+        <thead><tr><th>Data</th><th>Vacina</th><th>Complemento</th><th>Lote</th></tr></thead>
+        <tbody>
+          @for (v of vacinas(); track v.idVacina) {
+            <tr>
+              <td class="tabular">{{ (v.dataAplicacao | date: 'dd/MM/yyyy') || '—' }}</td>
+              <td>{{ v.vacinaNome || '—' }}</td>
+              <td>{{ v.complemento || '—' }}</td>
+              <td class="tabular">{{ v.lote || '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" class="dc__vazio">Nenhuma vacina registrada.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Alergias e Intolerâncias (dado real + escrita nativa) -->
+  <section class="nx-group">
+    <div class="nx-group-head">Alergias e Intolerâncias</div>
+    <div class="nx-group-body">
+      <!-- Barra de ações (Ver canceladas + Nova alergia) -->
+      <div class="dc__escrita-barra nao-imprime">
+        <label class="dc__check">
+          <input type="checkbox" [checked]="verCanceladas()" (change)="alternarCanceladas()" />
+          <span>Ver canceladas</span>
+        </label>
+        <span class="dc__escrita-sep"></span>
+        @if (podeEscrever() && !novoAberto()) {
+          <button type="button" class="nx-btn nx-btn--primary nx-btn--sm" (click)="abrirNovo()">+ Nova alergia</button>
+        }
+      </div>
+
+      <!-- Form: nova alergia -->
+      @if (podeEscrever() && novoAberto()) {
+        <section class="nx-form dc__form nao-imprime">
+          <div class="nx-form-body">
+            <label class="nx-campo nx-campo--full">
+              <span class="nx-campo-lbl">
+                Substância
+                <span class="nx-contador" [class.nx-contador--ok]="novoValido">
+                  {{ novaSubstancia.trim().length }} / mín. {{ SUBSTANCIA_MIN }}
+                </span>
+              </span>
+              <input type="text" [(ngModel)]="novaSubstancia" [disabled]="salvando()" placeholder="Ex.: Penicilina" />
+            </label>
+
+            <label class="nx-campo">
+              <span class="nx-campo-lbl">Categoria <em>(opcional)</em></span>
+              <select [(ngModel)]="novaCategoria" [disabled]="salvando()">
+                <option value="">—</option>
+                @for (c of categorias; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </label>
+
+            <label class="nx-campo">
+              <span class="nx-campo-lbl">Criticidade <em>(opcional)</em></span>
+              <select [(ngModel)]="novaCriticidade" [disabled]="salvando()">
+                <option value="">—</option>
+                @for (c of criticidades; track c) { <option [value]="c">{{ c }}</option> }
+              </select>
+            </label>
+
+            <label class="nx-campo nx-campo--full">
+              <span class="nx-campo-lbl">Reação <em>(opcional)</em></span>
+              <input type="text" [(ngModel)]="novaReacao" [disabled]="salvando()" placeholder="Ex.: Urticária, edema…" />
+            </label>
+
+            @if (erroSalvar()) {
+              <p class="nx-erro" role="alert">{{ erroSalvar() }}</p>
+            }
+
+            <div class="nx-form-acoes">
+              <button type="button" class="nx-btn nx-btn--primary" (click)="salvarNovo()" [disabled]="!novoValido || salvando()">
+                @if (salvando()) { <span class="nx-spinner" aria-hidden="true"></span> Salvando… } @else { Salvar }
+              </button>
+              <button type="button" class="nx-btn" (click)="cancelarNovo()" [disabled]="salvando()">Cancelar</button>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (alergias().length === 0) {
+        <pr-estado-vazio icone="&#10003;" titulo="Sem alergias registradas" descricao="A origem não enviou alergias para este paciente." />
+      } @else {
+        @for (a of alergias(); track a.idAlergia) {
+          <article class="dc__registro nx-group" [class.nx-registro--cancelado]="a.cancelado">
+            <header class="dc__registro-cab nx-group-head">
+              <strong>{{ a.substancia || '—' }}</strong>
+              <span class="dc__registro-meta">
+                @if (a.categoria) { {{ a.categoria }} }
+                @if (a.criticidade) { · <span [class.dc__critico]="ehAlta(a.criticidade)">{{ a.criticidade }}</span> }
+              </span>
+
+              <!-- Chip de origem -->
+              @if (a.ehNativa) {
+                <span class="nx-chip nx-chip--nativa">Registrada aqui</span>
+              } @else {
+                <span class="nx-chip nx-chip--origem">Sistema de origem</span>
+              }
+            </header>
+
+            <!-- Tarja de cancelamento -->
+            @if (a.cancelado) {
+              <div class="nx-tarja">CANCELADA — {{ a.motivoCancelamento || 'sem motivo informado' }}</div>
+            }
+
+            <div class="nx-group-body nx-registro-conteudo">
+              <div class="nx-fields nx-fields--2">
+                <div class="nx-field"><span class="nx-label">Substância:</span><span class="nx-input">{{ a.substancia || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Categoria:</span><span class="nx-input">{{ a.categoria || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Criticidade:</span><span class="nx-input" [class.dc__critico]="ehAlta(a.criticidade)">{{ a.criticidade || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Reação:</span><span class="nx-input">{{ a.reacao || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Status:</span><span class="nx-input">{{ a.statusOrigem || '—' }}</span></div>
+              </div>
+            </div>
+
+            <!-- Ações de escrita (nativa, não cancelada) -->
+            @if (podeAgir(a)) {
+              <div class="dc__registro-acoes nao-imprime">
+                @if (!acaoAberta(a)) {
+                  <button type="button" class="nx-btn nx-btn--sm nx-btn--danger" (click)="abrirCancelar(a)">Cancelar</button>
+                } @else {
+                  <div class="nx-acao-form">
+                    <label class="nx-campo nx-campo--full">
+                      <span class="nx-campo-lbl">Motivo do cancelamento <em>(obrigatório, mín. {{ MOTIVO_MIN }})</em></span>
+                      <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está cancelando?" />
+                    </label>
+                    @if (erroAcao()) { <p class="nx-erro" role="alert">{{ erroAcao() }}</p> }
+                    <div class="nx-form-acoes">
+                      <button type="button" class="nx-btn nx-btn--danger nx-btn--sm" (click)="confirmarCancelar(a)"
+                        [disabled]="!acaoMotivoValido || processandoAcao()">
+                        @if (processandoAcao()) { <span class="nx-spinner" aria-hidden="true"></span> Processando… } @else { Confirmar cancelamento }
+                      </button>
+                      <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+      }
+    </div>
+  </section>
+}

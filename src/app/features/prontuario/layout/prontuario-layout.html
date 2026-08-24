@@ -1,0 +1,42 @@
+<div class="prontuario-theme prontuario-shell">
+  <!-- Barra de titulo vinho, fina, estilo janela desktop (NephroSys). -->
+  <header class="pr-header">
+    <div class="pr-header__brand">
+      <span class="pr-header__mark" aria-hidden="true">＋</span>
+      <div class="pr-header__titulo">
+        <strong>Prontuário Clínico</strong>
+        @if (unidadeAtiva().nome) {
+          <span class="pr-header__clinica">{{ unidadeAtiva().nome }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="pr-header__acoes">
+      @if (usuarioNome()) {
+        <span class="pr-header__usuario">
+          {{ usuarioNome() }}
+          @if (usuarioRole()) {
+            <span class="pr-header__role">{{ usuarioRole() }}</span>
+          }
+        </span>
+      }
+
+      <a class="pr-header__link" routerLink="/home">Voltar ao operacional</a>
+
+      <button type="button" class="pr-header__sair" (click)="sair()">Sair</button>
+    </div>
+  </header>
+
+  <!-- Conteudo (busca / paciente / abas). -->
+  <main class="pr-main">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Faixa LGPD permanente (aviso-acesso-clinico), fina, estilo statusbar. -->
+  <footer class="pr-lgpd" role="note" aria-label="Aviso de acesso clinico">
+    <span class="pr-lgpd__icone" aria-hidden="true">🔒</span>
+    <span class="pr-lgpd__texto">
+      Dados do sistema de origem - somente leitura. Acessos sao registrados (LGPD).
+    </span>
+  </footer>
+</div>

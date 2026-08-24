@@ -1,0 +1,324 @@
+:host {
+  display: block;
+}
+
+.ps {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+
+  // ---- "Janela" (card moderno) ----
+  &__janela {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background: var(--pr-white, #fff);
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+    overflow: hidden;
+  }
+
+  &__titlebar {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    padding: 10px 16px;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  // ---- Barra do paciente (sempre visivel) ----
+  &__paciente {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    background: var(--pr-white, #fff);
+    border-bottom: 1px solid var(--pr-border-soft, #e3e7ee);
+
+    &--skel {
+      min-height: 44px;
+    }
+  }
+
+  &__nome {
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    min-width: 220px;
+    max-width: 420px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--pr-text);
+  }
+
+  &__codigo {
+    min-width: 64px;
+    justify-content: center;
+    color: var(--pr-muted);
+  }
+
+  &__campo {
+    margin: 0;
+
+    .nx-label {
+      min-width: auto;
+    }
+  }
+
+  &__sexo {
+    min-width: 86px;
+  }
+
+  &__nasc {
+    min-width: 88px;
+  }
+
+  // Chip "Somente leitura" (substitui Gravar/Ok do NephroSys).
+  &__leitura {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #1e5f7a;
+    background: #e7f3f8;
+    border: 1px solid #bfe0ec;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  // Chips de alerta clinico (alergias / diabetes) na barra do paciente.
+  &__alerta {
+    align-self: center;
+  }
+
+  // Badge de situação cadastral (óbito/transferência/etc.), ao lado do chip de leitura.
+  &__situacao {
+    align-self: center;
+  }
+
+  &__direita {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  // Frescor da sincronizacao, discreto.
+  &__sync {
+    font-size: 11px;
+  }
+
+  &__voltar {
+    font-size: 12px;
+    color: var(--pr-sel, #2f6fd0);
+    text-decoration: none;
+    white-space: nowrap;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 1px dotted var(--pr-sel, #2f6fd0);
+      outline-offset: 2px;
+    }
+  }
+
+  // ---- Faixa de abas (limpa, com sublinhado de acento) ----
+  &__abas {
+    background: var(--pr-group-head, #f6f8fb);
+    padding: 0 8px;
+    border-bottom: 1px solid var(--pr-border-soft, #e3e7ee);
+    overflow-x: auto;
+  }
+
+  &__abas-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__aba {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 13px;
+    font-size: 12px;
+    color: var(--pr-muted, #6b7280);
+    text-decoration: none;
+    white-space: nowrap;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.12s, background 0.12s;
+
+    &:hover {
+      color: var(--pr-text, #1f2937);
+      background: rgba(37, 99, 168, 0.06);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--pr-primary, #2563a8);
+      outline-offset: -2px;
+    }
+
+    &--ativa {
+      color: var(--pr-primary, #2563a8);
+      font-weight: 700;
+      border-bottom-color: var(--pr-primary, #2563a8);
+      background: var(--pr-white, #fff);
+    }
+  }
+
+  &__conteudo {
+    flex: 1 1 auto;
+    padding: 16px;
+    background: var(--pr-bg, #eef1f6);
+  }
+
+  // ---- Estados de erro (janela de dialogo) ----
+  &__erro-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+
+  &__erro {
+    width: min(480px, 100%);
+    background: var(--pr-surface, #f7f7f7);
+    border: 1px solid var(--pr-border, #b9b9b9);
+    box-shadow: var(--pr-shadow-md, 0 2px 6px rgba(0, 0, 0, 0.18));
+  }
+
+  &__erro-corpo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+
+  &__erro-icone {
+    font-size: 26px;
+    line-height: 1;
+    color: var(--pr-muted, #5a5a5a);
+
+    &--warn {
+      color: var(--pr-warn, #b26a00);
+    }
+
+    &--danger {
+      color: var(--pr-danger, #c62828);
+    }
+  }
+
+  &__erro-titulo {
+    margin: 2px 0 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pr-text, #1c1c1c);
+  }
+
+  &__erro-texto {
+    margin: 0;
+    font-size: 12px;
+    color: var(--pr-muted, #5a5a5a);
+    max-width: 48ch;
+  }
+
+  &__erro-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+}
+
+/* ---- Botão imprimir na barra do paciente ---- */
+.ps__imprimir {
+  white-space: nowrap;
+}
+
+/* ---- Modal de impressão (seleção de abas) ---- */
+.ps__modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.ps__modal {
+  width: min(440px, 92vw);
+  background: var(--pr-surface);
+  border: 1px solid #777;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+
+  &-corpo {
+    padding: 10px 12px;
+  }
+
+  &-ajuda {
+    margin: 0 0 8px;
+  }
+
+  &-acoes-topo {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  &-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 46vh;
+    overflow: auto;
+  }
+
+  &-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    cursor: pointer;
+
+    &:hover {
+      background: #e6eefb;
+    }
+  }
+
+  &-rodape {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--pr-tab-bg);
+    border-top: 1px solid var(--pr-border);
+  }
+
+  &-ok {
+    font-weight: 700;
+  }
+}

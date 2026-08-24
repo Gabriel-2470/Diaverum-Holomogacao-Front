@@ -35,6 +35,20 @@ export class Home implements OnInit {
       route: '/importacao',
       color: 'green',
     },
+    {
+      title: 'Médicos',
+      description: 'Cadastre os médicos solicitantes usados nos pedidos de exame',
+      icon: 'stethoscope',
+      route: '/medicos',
+      color: 'purple',
+    },
+    {
+      title: 'Clínicas',
+      description: 'Configure o laboratório e o médico padrão de cada clínica',
+      icon: 'hospital',
+      route: '/clinicas',
+      color: 'blue',
+    },
   ];
 
   quickStats = [
@@ -50,7 +64,19 @@ export class Home implements OnInit {
     private sanitizer: DomSanitizer
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // Entrada para a área clínica de prontuário — só para quem tem permissão
+    // (o prontuarioGuard barra os demais). Guardado contra duplicação em re-navegação.
+    if (this.authService.podeAcessarProntuario() && !this.menuItems.some((m) => m.route === '/prontuario')) {
+      this.menuItems.push({
+        title: 'Prontuário Clínico',
+        description: 'Consulte o prontuário clínico dos pacientes (somente leitura)',
+        icon: 'prontuario',
+        route: '/prontuario',
+        color: 'green',
+      });
+    }
+  }
 
   // Mostrar no console o ID da unidade selecionada (se houver)
   ngAfterViewInit(): void {
@@ -107,6 +133,24 @@ export class Home implements OnInit {
              <circle cx="12" cy="12" r="10"></circle>
              <polyline points="12 6 12 12 16 14"></polyline>
              </svg>`,
+      // Estetoscópio para Médicos
+      stethoscope: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                   <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path>
+                   <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path>
+                   <circle cx="20" cy="10" r="2"></circle>
+                   </svg>`,
+      // Prédio/hospital para Clínicas
+      hospital: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                 <path d="M3 21h18"></path>
+                 <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
+                 <path d="M12 7v6"></path>
+                 <path d="M9 10h6"></path>
+                 <path d="M9 21v-4h6v4"></path>
+                 </svg>`,
+      // Traçado de monitor cardíaco para Prontuário Clínico
+      prontuario: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                   <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                   </svg>`,
     };
     return this.sanitizer.bypassSecurityTrustHtml(icons[iconName] || '');
   }

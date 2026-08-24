@@ -1,0 +1,48 @@
+<div class="perfil-page">
+  <header class="page-header">
+    <h2>Meu Perfil</h2>
+    <p class="subtitulo">Seus dados de acesso e alteração de senha.</p>
+  </header>
+
+  <div class="card">
+    <h3>Dados da conta</h3>
+    <div class="dados">
+      <div class="linha"><span class="rotulo">Nome</span><span class="valor">{{ nome }}</span></div>
+      <div class="linha"><span class="rotulo">E-mail</span><span class="valor">{{ email }}</span></div>
+      <div class="linha"><span class="rotulo">Perfil</span><span class="valor">{{ role }}</span></div>
+      <div class="linha"><span class="rotulo">Clínica ativa</span><span class="valor">{{ clinica }}</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Alterar senha</h3>
+
+    @if (msgOk) {
+      <div class="alert alert-ok">{{ msgOk }}</div>
+    }
+    @if (msgErro) {
+      <div class="alert alert-erro">{{ msgErro }}</div>
+    }
+
+    <div class="form-grid">
+      <label class="campo">
+        <span>Senha atual</span>
+        <input type="password" [(ngModel)]="form.senhaAtual" autocomplete="current-password" />
+      </label>
+      <label class="campo">
+        <span>Nova senha</span>
+        <input type="password" [(ngModel)]="form.novaSenha" placeholder="mínimo 6 caracteres" autocomplete="new-password" />
+      </label>
+      <label class="campo">
+        <span>Confirmar nova senha</span>
+        <input type="password" [(ngModel)]="form.confirmar" autocomplete="new-password" />
+      </label>
+    </div>
+
+    <div class="acoes">
+      <button class="btn btn-primary" (click)="alterarSenha()" [disabled]="salvando">
+        {{ salvando ? 'Salvando...' : 'Alterar senha' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,270 @@
+<section class="pagina-presc-hd prontuario-theme" aria-label="Prescrições de HD/DP">
+  <div class="nx-subtabs" aria-label="Sub-abas de prescrição de diálise">
+    <button type="button" class="nx-subtab is-ativa">Presc. de HD</button>
+    <button type="button" class="nx-subtab" disabled title="Indisponível nesta versão">Presc. de DP</button>
+  </div>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Prescrições de Diálise</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="6" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar as prescrições de diálise"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else {
+    <div class="nx-group">
+      <div class="nx-group-head">Prescrições de Diálise</div>
+      @if (dialise().length === 0) {
+        <p class="vazio-inline">Nenhuma prescrição de diálise registrada.</p>
+      } @else {
+        <div class="nx-grid-wrap">
+          <table class="nx-grid">
+            <caption class="sr-only">Prescrições de diálise, mais recentes primeiro. Clique na linha para ver as orientações.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Data início</th>
+                <th scope="col">Data final</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of dialise(); track p.idPrescricao) {
+                <tr
+                  class="is-clicavel"
+                  [class.is-sel]="exibida()?.idPrescricao === p.idPrescricao"
+                  [attr.aria-selected]="exibida()?.idPrescricao === p.idPrescricao"
+                  tabindex="0"
+                  (click)="selecionar(p)"
+                  (keydown.enter)="selecionar(p)"
+                >
+                  <td class="tabular">
+                    {{ (p.dataInicio || p.dataPrescricao) ? ((p.dataInicio || p.dataPrescricao) | date: 'dd/MM/yyyy') : '—' }}
+                  </td>
+                  <td class="tabular">{{ p.dataFim ? (p.dataFim | date: 'dd/MM/yyyy') : '—' }}</td>
+                  <td>{{ statusTexto(p) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <div class="nx-group">
+      <div class="nx-group-head">
+        Geral — Parâmetros da última sessão
+        @if (ultimaSessao(); as us) {
+          ({{ us.dataSessao ? (us.dataSessao | date: 'dd/MM/yyyy') : '—' }})
+        }
+      </div>
+      <div class="nx-pad">
+        @if (ultimaSessao(); as us) {
+          <div class="nx-fields nx-fields--2">
+            <div class="nx-field"><span class="lbl">Dialisador:</span><span class="nx-input">{{ us.dialisador || '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Duração:</span><span class="nx-input tabular">{{ duracaoHhMm(us.duracaoMin) }}</span></div>
+            <div class="nx-field"><span class="lbl">Peso seco (g):</span><span class="nx-input tabular">{{ us.pesoSeco ?? '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">UF Máxima:</span><span class="nx-input tabular">{{ us.ufPrescritaMl != null ? us.ufPrescritaMl + ' mL' : '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Heparina/Anticoag.:</span><span class="nx-input">{{ us.anticoagulacao || '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Fluxo de sangue:</span><span class="nx-input tabular">{{ us.fluxoSangueMlMin != null ? us.fluxoSangueMlMin + ' mL/min' : '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Fluxo de dialisato:</span><span class="nx-input tabular">{{ us.fluxoDialisatoMlMin != null ? us.fluxoDialisatoMlMin + ' mL/min' : '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Máquina:</span><span class="nx-input">{{ us.maquina || '—' }}</span></div>
+            <div class="nx-field"><span class="lbl">Acesso atual:</span><span class="nx-input">{{ us.acessoTipo || '—' }}</span></div>
+          </div>
+        } @else {
+          <p class="vazio-inline">Sem sessão registrada para derivar os parâmetros.</p>
+        }
+      </div>
+    </div>
+
+    <div class="nx-group">
+      <div class="nx-group-head">Orientações</div>
+      <div class="nx-pad">
+        @if (orientacoes().length === 0) {
+          <p class="vazio-inline">Sem orientações registradas na prescrição de diálise vigente.</p>
+        } @else {
+          <div class="orient-cols">
+            @for (it of orientacoes(); track it.idPrescricaoItem) {
+              <div class="nx-field">
+                <span class="lbl">{{ it.medicamentoOuParametro || '—' }}:</span>
+                <span class="nx-input">{{ valorOrientacao(it) }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ESCRITA nativa (Etapa 3) — só logado com papel de escrita -->
+    @if (podeEscrever()) {
+      <div class="nx-group ph__escrita">
+        <div class="nx-group-head">Prescrições de diálise registradas aqui</div>
+        <div class="nx-pad">
+          <!-- Barra de ações (Ver suspensas + Nova prescrição) -->
+          <div class="ph__escrita-barra nao-imprime">
+            <label class="ph__check">
+              <input type="checkbox" [checked]="verCanceladas()" (change)="alternarCanceladas()" />
+              <span>Ver suspensas</span>
+            </label>
+            <span class="ph__escrita-sep"></span>
+            @if (!novoAberto()) {
+              <button type="button" class="nx-btn nx-btn--primary nx-btn--sm" (click)="abrirNovo()">+ Nova prescrição de diálise</button>
+            }
+          </div>
+
+          <!-- Form: nova prescrição de diálise (cabeçalho + parâmetros dinâmicos) -->
+          @if (novoAberto()) {
+            <section class="nx-form ph__form nao-imprime">
+              <div class="nx-form-body">
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Data de início <em>(opcional)</em></span>
+                  <input type="date" [(ngModel)]="novaDataInicio" [disabled]="salvando()" />
+                </label>
+
+                <div class="ph__itens">
+                  @for (it of parametros(); track $index) {
+                    <fieldset class="ph__item">
+                      <legend>Parâmetro {{ $index + 1 }}</legend>
+                      <div class="nx-form-body">
+                        <label class="nx-campo nx-campo--full">
+                          <span class="nx-campo-lbl">
+                            Parâmetro
+                            <span class="nx-contador" [class.nx-contador--ok]="parametroValido(it)">
+                              {{ it.medicamentoOuParametro.trim().length }} / mín. {{ PARAMETRO_MIN }}
+                            </span>
+                          </span>
+                          <input type="text" [(ngModel)]="it.medicamentoOuParametro" [disabled]="salvando()" placeholder="Ex.: Heparina, Fluxo de sangue…" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Dose <em>(opcional)</em></span>
+                          <input type="text" [(ngModel)]="it.dose" [disabled]="salvando()" placeholder="Ex.: 300" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Unidade <em>(opcional)</em></span>
+                          <input type="text" [(ngModel)]="it.unidadeDose" [disabled]="salvando()" placeholder="Ex.: mL/min" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Via <em>(opcional)</em></span>
+                          <input type="text" [(ngModel)]="it.via" [disabled]="salvando()" placeholder="Ex.: EV" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Frequência <em>(opcional)</em></span>
+                          <input type="text" [(ngModel)]="it.frequencia" [disabled]="salvando()" placeholder="Ex.: cada sessão" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Momento da diálise <em>(opcional)</em></span>
+                          <select [(ngModel)]="it.momentoDialise" [disabled]="salvando()">
+                            <option value="">—</option>
+                            @for (m of momentos; track m) { <option [value]="m">{{ m }}</option> }
+                          </select>
+                        </label>
+                        <label class="nx-campo nx-campo--full">
+                          <span class="nx-campo-lbl">Observação <em>(opcional)</em></span>
+                          <input type="text" [(ngModel)]="it.observacao" [disabled]="salvando()" placeholder="Ex.: ajustar conforme peso" />
+                        </label>
+                      </div>
+                      @if (parametros().length > 1) {
+                        <button type="button" class="nx-btn nx-btn--danger nx-btn--sm ph__item-rm" (click)="removerParametro($index)" [disabled]="salvando()">Remover parâmetro</button>
+                      }
+                    </fieldset>
+                  }
+                </div>
+
+                <button type="button" class="nx-btn nx-btn--sm ph__add" (click)="adicionarParametro()" [disabled]="salvando()">+ parâmetro</button>
+
+                @if (erroSalvar()) {
+                  <p class="nx-erro" role="alert">{{ erroSalvar() }}</p>
+                }
+
+                <div class="nx-form-acoes">
+                  <button type="button" class="nx-btn nx-btn--primary" (click)="salvarNovo()" [disabled]="!novoValido || salvando()">
+                    @if (salvando()) { <span class="nx-spinner" aria-hidden="true"></span> Salvando… } @else { Prescrever }
+                  </button>
+                  <button type="button" class="nx-btn" (click)="cancelarNovo()" [disabled]="salvando()">Cancelar</button>
+                </div>
+              </div>
+            </section>
+          }
+
+          <!-- Cartões por prescrição (chip / tarja / suspender) -->
+          @if (prescricoesDialise().length === 0) {
+            <p class="vazio-inline">Nenhuma prescrição de diálise registrada.</p>
+          } @else {
+            @for (p of prescricoesDialise(); track p.idPrescricao) {
+              <article class="ph__registro nx-group" [class.nx-registro--cancelado]="p.cancelado">
+                <header class="ph__registro-cab nx-group-head">
+                  <strong>Prescrição {{ (p.dataInicio || p.dataPrescricao) ? ((p.dataInicio || p.dataPrescricao) | date: 'dd/MM/yyyy') : '' }}</strong>
+                  <span class="ph__registro-meta">
+                    @if (p.prescritorNome) { {{ p.prescritorNome }} }
+                  </span>
+
+                  <!-- Chip de origem -->
+                  @if (p.ehNativa) {
+                    <span class="nx-chip nx-chip--nativa">Registrada aqui</span>
+                  } @else {
+                    <span class="nx-chip nx-chip--origem">Sistema de origem</span>
+                  }
+                </header>
+
+                <!-- Tarja de suspensão -->
+                @if (p.cancelado) {
+                  <div class="nx-tarja">SUSPENSA — {{ p.motivoCancelamento || 'sem motivo informado' }}</div>
+                }
+
+                <div class="nx-group-body nx-registro-conteudo">
+                  <div class="nx-fields nx-fields--2">
+                    <div class="nx-field"><span class="nx-label">Prescritor:</span><span class="nx-input">{{ p.prescritorNome || '—' }}</span></div>
+                    <div class="nx-field"><span class="nx-label">Conselho:</span><span class="nx-input">{{ p.prescritorConselho || '—' }}</span></div>
+                    <div class="nx-field"><span class="nx-label">Início:</span><span class="nx-input tabular">{{ (p.dataInicio || p.dataPrescricao) ? ((p.dataInicio || p.dataPrescricao) | date: 'dd/MM/yyyy') : '—' }}</span></div>
+                    <div class="nx-field"><span class="nx-label">Final:</span><span class="nx-input tabular">{{ p.dataFim ? (p.dataFim | date: 'dd/MM/yyyy') : '—' }}</span></div>
+                    <div class="nx-field"><span class="nx-label">Status:</span><span class="nx-input">{{ p.statusOrigem || '—' }}</span></div>
+                  </div>
+                  @if ((p.itens ?? []).length > 0) {
+                    <ul class="ph__item-lista">
+                      @for (it of p.itens; track it.idPrescricaoItem) {
+                        <li>
+                          <strong>{{ it.medicamentoOuParametro || '—' }}</strong>
+                          <span class="ph__item-pos">{{ resumoParametro(it) }}</span>
+                          @if (it.observacao) { <span class="ph__item-obs">— {{ it.observacao }}</span> }
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+
+                <!-- Ações de escrita (nativa, não suspensa) -->
+                @if (podeAgir(p)) {
+                  <div class="ph__registro-acoes nao-imprime">
+                    @if (!acaoAberta(p)) {
+                      <button type="button" class="nx-btn nx-btn--sm nx-btn--danger" (click)="abrirSuspender(p)">Suspender</button>
+                    } @else {
+                      <div class="nx-acao-form">
+                        <label class="nx-campo nx-campo--full">
+                          <span class="nx-campo-lbl">Motivo da suspensão <em>(obrigatório, mín. {{ MOTIVO_MIN }})</em></span>
+                          <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está suspendendo?" />
+                        </label>
+                        @if (erroAcao()) { <p class="nx-erro" role="alert">{{ erroAcao() }}</p> }
+                        <div class="nx-form-acoes">
+                          <button type="button" class="nx-btn nx-btn--danger nx-btn--sm" (click)="confirmarSuspender(p)"
+                            [disabled]="!acaoMotivoValido || processandoAcao()">
+                            @if (processandoAcao()) { <span class="nx-spinner" aria-hidden="true"></span> Processando… } @else { Confirmar suspensão }
+                          </button>
+                          <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          }
+        </div>
+      </div>
+    }
+  }
+</section>

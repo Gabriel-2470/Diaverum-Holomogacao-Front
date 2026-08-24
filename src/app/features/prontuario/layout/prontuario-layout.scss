@@ -1,0 +1,189 @@
+// features/prontuario/layout/prontuario-layout.scss
+//
+// Estilo do SHELL clinico com o visual NephroSys. As CSS custom properties
+// (--pr-*) vem do tema aplicado na raiz (.prontuario-theme). Este arquivo
+// importa o tema para que a classe .prontuario-theme exista neste escopo de
+// componente.
+
+@use '../theme/prontuario-theme';
+
+.prontuario-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pr-bg);
+  color: var(--pr-text);
+}
+
+// ---- Barra de titulo (vinho, fina) ----
+.pr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  padding: 3px 10px;
+  background: var(--pr-titlebar);
+  color: var(--pr-titlebar-text);
+  border-bottom: 1px solid #6d130f;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  font-size: 12px;
+}
+
+.pr-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pr-header__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--pr-titlebar-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pr-header__titulo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  line-height: 1.2;
+
+  strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pr-titlebar-text);
+    white-space: nowrap;
+  }
+}
+
+.pr-header__clinica {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pr-header__acoes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pr-header__usuario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.pr-header__role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pr-titlebar-text);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 0 5px;
+  line-height: 1.5;
+}
+
+.pr-header__link {
+  font-size: 11px;
+  color: var(--pr-titlebar-text);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+
+  &:hover {
+    border-bottom-color: rgba(255, 255, 255, 0.8);
+  }
+
+  &:focus-visible {
+    outline: 1px dotted var(--pr-titlebar-text);
+    outline-offset: 2px;
+  }
+}
+
+.pr-header__sair {
+  font: inherit;
+  font-size: 11px;
+  height: 20px;
+  padding: 0 8px;
+  color: var(--pr-titlebar-text);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 2px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  &:focus-visible {
+    outline: 1px dotted var(--pr-titlebar-text);
+    outline-offset: 1px;
+  }
+}
+
+// ---- Conteudo ----
+.pr-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 8px 10px 16px;
+  box-sizing: border-box;
+}
+
+// ---- Faixa LGPD permanente (statusbar fina) ----
+.pr-lgpd {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background: var(--pr-group-head);
+  color: var(--pr-muted);
+  font-size: 11px;
+  text-align: center;
+  border-top: 1px solid var(--pr-border);
+}
+
+.pr-lgpd__icone {
+  flex: none;
+  font-size: 11px;
+}
+
+.pr-lgpd__texto {
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .pr-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .pr-header__acoes {
+    width: 100%;
+  }
+}

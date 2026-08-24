@@ -1,0 +1,402 @@
+<section class="busca" aria-label="Busca de pacientes">
+  <!-- Deep-link por CPF (hyperlink vindo de outro sistema): estados de resolução -->
+  @if (resolvendoCpf()) {
+    <div class="busca__card busca__estado" role="status" aria-live="polite">
+      <pr-estado-vazio
+        icone="&#8987;"
+        titulo="Abrindo o prontuário..."
+        descricao="Localizando o paciente pelo CPF recebido no link."
+      />
+    </div>
+  }
+  @if (cpfNaoEncontrado()) {
+    <div class="busca__card busca__estado busca__aviso-cpf" role="alert">
+      <pr-estado-vazio icone="!" titulo="Paciente do link não localizado" [descricao]="cpfNaoEncontrado()!" />
+    </div>
+  }
+  @if (precisaLogin()) {
+    <div class="busca__card busca__estado" role="alert">
+      <pr-estado-vazio
+        icone="&#128274;"
+        titulo="Pesquisa exige login"
+        descricao="O link abre o prontuário direto pelo CPF, mas para PESQUISAR pacientes é preciso entrar no sistema."
+      >
+        <button type="button" class="nx-btn" (click)="irParaLogin()">Fazer login</button>
+      </pr-estado-vazio>
+    </div>
+  }
+
+  <header class="busca__cabecalho">
+    <div>
+      <h1 class="busca__titulo">Buscar paciente</h1>
+      <p class="busca__subtitulo">
+        Pesquise por <strong>nome</strong> ou <strong>CPF</strong>, ou deixe o campo vazio para ver
+        todos os pacientes. A busca respeita a clínica ativa
+        @if (unidadeAtiva().nome) {
+          (<strong>{{ unidadeAtiva().nome }}</strong>)
+        }.
+      </p>
+    </div>
+
+    <!-- Botao "Fila de vinculo" OCULTO a pedido do contratante (23/07/2026).
+         A pagina segue acessivel para ADMIN pela URL direta /prontuario/vinculos. -->
+  </header>
+
+  <!-- BARRA DE FILTROS (uma linha; quebra no mobile) -->
+  <div class="busca__filtros nx-group">
+    <div class="busca__campo">
+      <span class="busca__lupa" aria-hidden="true">&#128269;</span>
+      <input
+        type="search"
+        class="busca__input"
+        [ngModel]="termo()"
+        (ngModelChange)="aoDigitar($event)"
+        placeholder="Nome ou CPF do paciente..."
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Nome ou CPF do paciente"
+      />
+      @if (termo()) {
+        <button type="button" class="busca__limpar" (click)="limparBusca()" aria-label="Limpar busca">
+          &times;
+        </button>
+      }
+    </div>
+
+    <label class="busca__filtro">
+      <span class="busca__filtro-lbl">Situação</span>
+      <select
+        class="busca__select"
+        [ngModel]="situacaoFiltro()"
+        (ngModelChange)="aoMudarSituacao($event)"
+        aria-label="Filtrar por situação do paciente"
+      >
+        @for (op of opcoesSituacao; track op.valor) {
+          <option [value]="op.valor">{{ op.rotulo }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="busca__filtro">
+      <span class="busca__filtro-lbl">Sexo</span>
+      <select
+        class="busca__select"
+        [ngModel]="sexoFiltro()"
+        (ngModelChange)="aoMudarSexo($event)"
+        aria-label="Filtrar por sexo do paciente"
+      >
+        @for (op of opcoesSexo; track op.valor) {
+          <option [value]="op.valor">{{ op.rotulo }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="busca__filtro">
+      <span class="busca__filtro-lbl">Unidade</span>
+      <select
+        class="busca__select"
+        [ngModel]="unidadeFiltro()"
+        (ngModelChange)="aoMudarUnidade($event)"
+        aria-label="Filtrar por unidade"
+      >
+        <option [ngValue]="null">Todas</option>
+        @for (u of unidades(); track u.iD_UNIDADE) {
+          <option [ngValue]="u.iD_UNIDADE">{{ u.descricao }}</option>
+        }
+      </select>
+    </label>
+
+    <div class="busca__filtro busca__filtro--idade" role="group" aria-label="Filtrar por faixa etária">
+      <span class="busca__filtro-lbl">
+        Idade <span class="busca__idade-valor" aria-hidden="true">{{ idadeSliderTexto() }}</span>
+      </span>
+      <div class="busca__slider">
+        <div class="busca__slider-trilha" aria-hidden="true">
+          <div
+            class="busca__slider-ativo"
+            [style.left.%]="idadePctMin()"
+            [style.right.%]="100 - idadePctMax()"
+          ></div>
+        </div>
+        <input
+          #idadeMinRange
+          type="range"
+          class="busca__slider-thumb busca__slider-thumb--min"
+          min="0"
+          max="130"
+          step="1"
+          [value]="idadeMinSlider()"
+          (input)="aoDeslizarIdadeMin(idadeMinRange.value)"
+          (change)="aoAplicarIdade()"
+          aria-label="Idade mínima"
+          [attr.aria-valuenow]="idadeMinSlider()"
+          aria-valuemin="0"
+          aria-valuemax="130"
+          [attr.aria-valuetext]="idadeMinSlider() + ' anos'"
+        />
+        <input
+          #idadeMaxRange
+          type="range"
+          class="busca__slider-thumb busca__slider-thumb--max"
+          min="0"
+          max="130"
+          step="1"
+          [value]="idadeMaxSlider()"
+          (input)="aoDeslizarIdadeMax(idadeMaxRange.value)"
+          (change)="aoAplicarIdade()"
+          aria-label="Idade máxima"
+          [attr.aria-valuenow]="idadeMaxSlider()"
+          aria-valuemin="0"
+          aria-valuemax="130"
+          [attr.aria-valuetext]="idadeMaxSlider() + ' anos'"
+        />
+        <div class="busca__slider-limites" aria-hidden="true">
+          <span>0</span>
+          <span>130</span>
+        </div>
+      </div>
+    </div>
+
+    <label class="busca__filtro busca__filtro--tam">
+      <span class="busca__filtro-lbl">Por página</span>
+      <select
+        class="busca__select"
+        [ngModel]="tamanhoPagina()"
+        (ngModelChange)="aoMudarTamanho($event)"
+        aria-label="Pacientes por página"
+      >
+        @for (t of opcoesTamanho; track t) {
+          <option [ngValue]="t">{{ t }}</option>
+        }
+      </select>
+    </label>
+
+    @if (temFiltroAtivo()) {
+      <button type="button" class="nx-btn busca__limpar-filtros" (click)="limparFiltros()">
+        Limpar filtros
+      </button>
+    }
+
+    <button
+      type="button"
+      class="nx-btn busca__export"
+      (click)="exportarCsv()"
+      [disabled]="exportando()"
+      [attr.aria-busy]="exportando()"
+      title="Exportar resultado em CSV"
+    >
+      {{ exportando() ? 'Exportando…' : '⬇ CSV' }}
+    </button>
+
+    @if (erroExport()) {
+      <span class="busca__export-erro" role="alert">Não foi possível exportar. Tente novamente.</span>
+    }
+  </div>
+
+  <!-- CHIPS de filtros ativos -->
+  @if (chips().length > 0) {
+    <div class="busca__chips" role="group" aria-label="Filtros ativos">
+      @for (c of chips(); track c.tipo) {
+        <span class="nx-chip busca__chip busca__chip--{{ c.tipo }}">
+          {{ c.rotulo }}
+          <button
+            type="button"
+            class="busca__chip-x"
+            (click)="removerChip(c.tipo)"
+            [attr.aria-label]="'Remover filtro ' + c.rotulo"
+          >&times;</button>
+        </span>
+      }
+    </div>
+  }
+
+  <!-- Contagem acessivel (aria-live) -->
+  <p class="busca__contagem" role="status" aria-live="polite">{{ contagemTexto() }}</p>
+
+  @if (carregando()) {
+    <div class="busca__card busca__skeleton">
+      <pr-skeleton-bloco [linhas]="6" altura="18px" />
+    </div>
+  } @else if (erro()) {
+    <div class="busca__card busca__estado">
+      <pr-estado-vazio
+        icone="!"
+        titulo="Não foi possível buscar"
+        descricao="Ocorreu um erro ao consultar o sistema de origem. Tente novamente."
+      >
+        <button type="button" class="nx-btn" (click)="tentarNovamente()">Tentar novamente</button>
+      </pr-estado-vazio>
+    </div>
+  } @else if (!buscou()) {
+    <div class="busca__card busca__estado">
+      <pr-estado-vazio
+        icone="&#128269;"
+        titulo="Carregando pacientes"
+        descricao="Aguarde enquanto a lista de pacientes é carregada."
+      />
+    </div>
+  } @else if (pacientes().length === 0) {
+    <div class="busca__card busca__estado">
+      <pr-estado-vazio
+        icone="&#128100;"
+        titulo="Nenhum paciente encontrado"
+        descricao="Revise os termos, os filtros ou confirme se a clínica ativa é a correta."
+      />
+    </div>
+  } @else {
+    <div class="nx-grid-wrap busca__tabela-wrap">
+      <table class="nx-grid busca__tabela">
+        <caption class="sr-only">Resultados da busca de pacientes</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="busca__col-check">
+              <input
+                type="checkbox"
+                class="busca__check"
+                [checked]="paginaTodaSelecionada()"
+                [indeterminate]="paginaParcialmenteSelecionada()"
+                (change)="alternarPagina()"
+                aria-label="Selecionar todos os pacientes desta página"
+              />
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('NOME')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('NOME')">
+                Nome <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('NOME') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('CPF')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('CPF')">
+                CPF <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('CPF') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('NASCIMENTO')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('NASCIMENTO')">
+                Nascimento <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('NASCIMENTO') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('IDADE')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('IDADE')">
+                Idade <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('IDADE') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('ULTIMA_SESSAO')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('ULTIMA_SESSAO')">
+                Última sessão <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('ULTIMA_SESSAO') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('UNIDADE')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('UNIDADE')">
+                Unidade <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('UNIDADE') }}</span>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('SITUACAO')">
+              <button type="button" class="busca__th-ord" (click)="ordenarPorColuna('SITUACAO')">
+                Situação <span class="busca__th-seta" aria-hidden="true">{{ indicadorOrd('SITUACAO') }}</span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pacientes(); track p.idProntPaciente) {
+            <tr
+              class="busca__linha"
+              [class.is-sel]="estaSelecionado(p.idProntPaciente)"
+              tabindex="0"
+              role="link"
+              [attr.aria-label]="'Abrir prontuário de ' + (p.nome || 'paciente')"
+              (click)="abrirPaciente(p)"
+              (keydown)="aoTeclaLinha($event, p)"
+            >
+              <td class="busca__col-check" (click)="$event.stopPropagation()">
+                <input
+                  type="checkbox"
+                  class="busca__check"
+                  [checked]="estaSelecionado(p.idProntPaciente)"
+                  (change)="alternarSelecao(p)"
+                  (click)="$event.stopPropagation()"
+                  [attr.aria-label]="'Selecionar ' + (p.nome || 'paciente')"
+                />
+              </td>
+              <td class="busca__nome">
+                <a
+                  class="busca__nome-link"
+                  [routerLink]="['/prontuario', 'paciente', p.idProntPaciente]"
+                  (click)="$event.stopPropagation()"
+                >
+                  {{ p.nome || '—' }}
+                </a>
+              </td>
+              <td class="tabular busca__cpf">{{ formatarCpf(p.cpf) || p.cpfMascarado || '—' }}</td>
+              <td class="tabular">{{ formatarData(p.dataNascimento) }}</td>
+              <td class="tabular busca__idade">{{ idadeTexto(p) }}</td>
+              <td class="tabular busca__ult-sessao">{{ formatarData(p.ultimaSessao) }}</td>
+              <td>{{ nomeUnidade(p) }}</td>
+              <td>
+                @if (temChipSituacao(p)) {
+                  <span class="nx-chip busca__sit" [ngClass]="classeSituacao(p)">{{ rotuloSituacao(p) }}</span>
+                } @else {
+                  <span class="busca__ativo">Ativo</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação completa (servidor) -->
+    <nav class="busca__paginacao" aria-label="Paginação dos resultados">
+      <span class="busca__pag-info" aria-live="polite">{{ resumoPaginacao() }}</span>
+      <div class="busca__pag-botoes">
+        <button
+          type="button"
+          class="nx-btn busca__pag-btn"
+          (click)="primeiraPagina()"
+          [disabled]="paginaAtual() <= 1 || carregando()"
+          aria-label="Primeira página"
+          title="Primeira página"
+        >&#9198;</button>
+        <button
+          type="button"
+          class="nx-btn busca__pag-btn"
+          (click)="paginaAnterior()"
+          [disabled]="paginaAtual() <= 1 || carregando()"
+          aria-label="Página anterior"
+          title="Página anterior"
+        >&lsaquo;</button>
+        <button
+          type="button"
+          class="nx-btn busca__pag-btn"
+          (click)="proximaPagina()"
+          [disabled]="paginaAtual() >= totalPaginas() || carregando()"
+          aria-label="Próxima página"
+          title="Próxima página"
+        >&rsaquo;</button>
+        <button
+          type="button"
+          class="nx-btn busca__pag-btn"
+          (click)="ultimaPagina()"
+          [disabled]="paginaAtual() >= totalPaginas() || carregando()"
+          aria-label="Última página"
+          title="Última página"
+        >&#9197;</button>
+      </div>
+    </nav>
+  }
+
+  <!-- Barra fixa de seleção (aparece quando há selecionados; persiste entre páginas) -->
+  @if (quantidadeSelecionada() > 0) {
+    <div class="busca__selbar" role="region" aria-label="Ações de seleção">
+      <span class="busca__selbar-info">
+        {{ quantidadeSelecionada() }}
+        {{ quantidadeSelecionada() === 1 ? 'selecionado' : 'selecionados' }}
+      </span>
+      <div class="busca__selbar-acoes">
+        <button type="button" class="nx-btn busca__selbar-imprimir" (click)="imprimirSelecionados()">
+          🖨 Imprimir selecionados
+        </button>
+        <button type="button" class="nx-btn" (click)="limparSelecao()">Limpar</button>
+      </div>
+    </div>
+  }
+</section>

@@ -1,0 +1,346 @@
+<section class="pagina-ver-hd prontuario-theme" aria-label="Ver HD/DP">
+  <h2 class="titulo-hd">HEMODIÁLISE</h2>
+
+  <div class="barra-filtro">
+    <span class="rotulo">Período:</span>
+    <input type="date" class="nx-input inp-data" [value]="de()" (change)="definirDe($event)" aria-label="Data inicial do período" />
+    <span>à</span>
+    <input type="date" class="nx-input inp-data" [value]="ate()" (change)="definirAte($event)" aria-label="Data final do período" />
+    <span class="total">Total de Registro(s): <b class="tabular">{{ total() }}</b></span>
+  </div>
+
+  <div class="nx-subtabs" aria-label="Modalidade">
+    <button type="button" class="nx-subtab is-ativa">HD</button>
+    <button type="button" class="nx-subtab" disabled title="Indisponível nesta versão">DP</button>
+  </div>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Sessões de Hemodiálise</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="8" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar as sessões"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else {
+    <!-- ESCRITA nativa (Etapa 4) — só flag de ambiente ligada E logado com papel de escrita -->
+    @if (podeCriarSessao()) {
+      <div class="nx-group vh__escrita">
+        <div class="nx-group-head">Registro de sessões (nativo)</div>
+        <div class="nx-pad">
+          <!-- Barra de ações (Ver canceladas + Nova sessão) -->
+          <div class="vh__escrita-barra nao-imprime">
+            <label class="vh__check">
+              <input type="checkbox" [checked]="verCanceladas()" (change)="alternarCanceladas()" />
+              <span>Ver canceladas</span>
+            </label>
+            <span class="vh__escrita-sep"></span>
+            @if (!novoAberto()) {
+              <button type="button" class="nx-btn nx-btn--primary nx-btn--sm" (click)="abrirNovo()">+ Nova sessão</button>
+            }
+          </div>
+
+          <!-- Form: nova sessão (cabeçalho + sinais vitais dinâmicos) -->
+          @if (novoAberto()) {
+            <section class="nx-form vh__form nao-imprime">
+              <div class="nx-form-body">
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Data da sessão <em>(obrigatório)</em></span>
+                  <input type="date" [(ngModel)]="novaDataSessao" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Duração (min) <em>(opcional)</em></span>
+                  <input type="number" min="0" [(ngModel)]="novaDuracaoMin" [disabled]="salvando()" placeholder="Ex.: 240" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Status</span>
+                  <select [(ngModel)]="novoStatusSessao" [disabled]="salvando()">
+                    @for (st of statusSessaoOpcoes; track st) { <option [value]="st">{{ st }}</option> }
+                  </select>
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Acesso <em>(opcional)</em></span>
+                  <select [(ngModel)]="novoAcessoTipo" [disabled]="salvando()">
+                    <option value="">—</option>
+                    @for (a of acessoTipoOpcoes; track a) { <option [value]="a">{{ a }}</option> }
+                  </select>
+                </label>
+
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Peso pré (kg) <em>(opcional)</em></span>
+                  <input type="number" step="0.1" [(ngModel)]="novoPesoPre" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Peso pós (kg) <em>(opcional)</em></span>
+                  <input type="number" step="0.1" [(ngModel)]="novoPesoPos" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Peso seco (kg) <em>(opcional)</em></span>
+                  <input type="number" step="0.1" [(ngModel)]="novoPesoSeco" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">UF realizada (mL) <em>(opcional)</em></span>
+                  <input type="number" [(ngModel)]="novaUfRealizadaMl" [disabled]="salvando()" />
+                </label>
+
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">PA pré sistólica <em>(opcional)</em></span>
+                  <input type="number" [(ngModel)]="novaPaPreSis" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">PA pré diastólica <em>(opcional)</em></span>
+                  <input type="number" [(ngModel)]="novaPaPreDia" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">PA pós sistólica <em>(opcional)</em></span>
+                  <input type="number" [(ngModel)]="novaPaPosSis" [disabled]="salvando()" />
+                </label>
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">PA pós diastólica <em>(opcional)</em></span>
+                  <input type="number" [(ngModel)]="novaPaPosDia" [disabled]="salvando()" />
+                </label>
+
+                <label class="nx-campo">
+                  <span class="nx-campo-lbl">Máquina <em>(opcional)</em></span>
+                  <input type="text" [(ngModel)]="novaMaquina" [disabled]="salvando()" placeholder="Ex.: Fresenius 4008S" />
+                </label>
+                <label class="nx-campo vh__check-campo">
+                  <input type="checkbox" [(ngModel)]="novaTeveIntercorrencia" [disabled]="salvando()" />
+                  <span>Teve intercorrência</span>
+                </label>
+                <label class="nx-campo nx-campo--full">
+                  <span class="nx-campo-lbl">Intercorrências <em>(opcional)</em></span>
+                  <textarea rows="2" [(ngModel)]="novasIntercorrencias" [disabled]="salvando()" placeholder="Descreva as intercorrências, se houver."></textarea>
+                </label>
+
+                <!-- Sub-form: sinais vitais seriados dinâmicos -->
+                <div class="vh__sinais">
+                  <div class="vh__sinais-head">Sinais vitais seriados <em>(opcional)</em></div>
+                  @for (sv of sinais(); track $index) {
+                    <fieldset class="vh__sinal">
+                      <legend>Leitura {{ $index + 1 }}</legend>
+                      <div class="nx-form-body">
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Momento</span>
+                          <input type="text" [(ngModel)]="sv.momento" [disabled]="salvando()" placeholder="Ex.: 1h, pré, pós" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">PA sistólica</span>
+                          <input type="number" [(ngModel)]="sv.paSis" [disabled]="salvando()" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">PA diastólica</span>
+                          <input type="number" [(ngModel)]="sv.paDia" [disabled]="salvando()" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">FC</span>
+                          <input type="number" [(ngModel)]="sv.fc" [disabled]="salvando()" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">Temperatura</span>
+                          <input type="number" step="0.1" [(ngModel)]="sv.temperatura" [disabled]="salvando()" />
+                        </label>
+                        <label class="nx-campo">
+                          <span class="nx-campo-lbl">UF acum. (mL)</span>
+                          <input type="number" [(ngModel)]="sv.ufAcumuladaMl" [disabled]="salvando()" />
+                        </label>
+                        <label class="nx-campo nx-campo--full">
+                          <span class="nx-campo-lbl">Observação</span>
+                          <input type="text" [(ngModel)]="sv.observacao" [disabled]="salvando()" />
+                        </label>
+                      </div>
+                      @if (sinais().length > 1) {
+                        <button type="button" class="nx-btn nx-btn--danger nx-btn--sm vh__sinal-rm" (click)="removerSinal($index)" [disabled]="salvando()">Remover leitura</button>
+                      }
+                    </fieldset>
+                  }
+                  <button type="button" class="nx-btn nx-btn--sm vh__add" (click)="adicionarSinal()" [disabled]="salvando()">+ leitura</button>
+                </div>
+
+                @if (erroSalvar()) {
+                  <p class="nx-erro" role="alert">{{ erroSalvar() }}</p>
+                }
+
+                <div class="nx-form-acoes">
+                  <button type="button" class="nx-btn nx-btn--primary" (click)="salvarNovo()" [disabled]="!novoValido || salvando()">
+                    @if (salvando()) { <span class="nx-spinner" aria-hidden="true"></span> Salvando… } @else { Salvar sessão }
+                  </button>
+                  <button type="button" class="nx-btn" (click)="cancelarNovo()" [disabled]="salvando()">Cancelar</button>
+                </div>
+              </div>
+            </section>
+          }
+        </div>
+      </div>
+    }
+
+    @if (filtradas().length === 0) {
+      <pr-estado-vazio icone="—" titulo="Nenhuma sessão" descricao="Nenhuma sessão registrada no período selecionado." />
+    } @else {
+      <div class="nx-group">
+        <div class="nx-group-head">Sessões de Hemodiálise</div>
+        <div class="nx-grid-wrap">
+          <table class="nx-grid">
+            <caption class="sr-only">Sessões de hemodiálise, mais recentes primeiro. Clique na linha para ver os sinais vitais.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Duração</th>
+                <th scope="col">Status</th>
+                <th scope="col">Peso pré</th>
+                <th scope="col">Peso pós</th>
+                <th scope="col" title="Carregada ao abrir o detalhe da sessão">UF realizada</th>
+                <th scope="col" title="Carregada ao abrir o detalhe da sessão">PA pré</th>
+                <th scope="col" title="Carregada ao abrir o detalhe da sessão">PA pós</th>
+                <th scope="col">Kt/V</th>
+                <th scope="col">URR</th>
+                <th scope="col">Intercorrência</th>
+                @if (podeCriarSessao()) { <th scope="col">Origem</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of filtradas(); track s.idSessao) {
+                <tr
+                  class="is-clicavel"
+                  [class.is-sel]="estaExpandida(s.idSessao)"
+                  [class.nx-registro--cancelado]="s.cancelado"
+                  [attr.aria-expanded]="estaExpandida(s.idSessao)"
+                  tabindex="0"
+                  (click)="alternar(s.idSessao)"
+                  (keydown.enter)="alternar(s.idSessao)"
+                >
+                  <td class="tabular">{{ s.dataSessao ? (s.dataSessao | date: 'dd/MM/yyyy') : '—' }}</td>
+                  <td class="tabular">{{ duracaoHhMm(s.duracaoMin) }}</td>
+                  <td>{{ s.statusSessao || '—' }}</td>
+                  <td class="tabular">{{ s.pesoPre != null ? s.pesoPre + ' kg' : '—' }}</td>
+                  <td class="tabular">{{ s.pesoPos != null ? s.pesoPos + ' kg' : '—' }}</td>
+                  <td class="tabular">{{ ufRealizadaTexto(s) }}</td>
+                  <td class="tabular">{{ paPreTexto(s) }}</td>
+                  <td class="tabular">{{ paPosTexto(s) }}</td>
+                  <td class="tabular">{{ s.ktv ?? '—' }}</td>
+                  <td class="tabular">{{ s.urr != null ? s.urr + '%' : '—' }}</td>
+                  <td>
+                    @if (s.teveIntercorrencia) {
+                      <span class="flag--sim">Sim</span>
+                    } @else {
+                      Não
+                    }
+                  </td>
+                  @if (podeCriarSessao()) {
+                    <td>
+                      @if (s.ehNativa) {
+                        <span class="nx-chip nx-chip--nativa">Registrada aqui</span>
+                      } @else {
+                        <span class="nx-chip nx-chip--origem">Sistema de origem</span>
+                      }
+                    </td>
+                  }
+                </tr>
+
+                @if (estaExpandida(s.idSessao)) {
+                  <tr class="linha-detalhe" [class.nx-registro--cancelado]="s.cancelado">
+                    <td [attr.colspan]="podeCriarSessao() ? 12 : 11">
+                      @if (s.cancelado) {
+                        <div class="nx-tarja">CANCELADA — {{ s.motivoCancelamento || 'sem motivo informado' }}</div>
+                      }
+
+                      <div class="nx-registro-conteudo">
+                        @if (detalhe(s.idSessao)?.carregando) {
+                          <pr-skeleton [linhas]="4" />
+                        } @else if (detalhe(s.idSessao)?.erro) {
+                          <p class="vazio-inline">Erro ao carregar o detalhe desta sessão.</p>
+                        } @else if (detalhe(s.idSessao)?.dados; as det) {
+                          <div class="detalhe">
+                            @if (det.teveIntercorrencia && det.intercorrencias) {
+                              <p class="intercorrencia"><b class="flag--sim">Intercorrências:</b> {{ det.intercorrencias }}</p>
+                            }
+                            @if (sinaisOrdenados(det).length) {
+                              <div class="nx-grid-wrap">
+                                <table class="nx-grid">
+                                  <caption class="sr-only">Sinais vitais da sessão.</caption>
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Seq</th>
+                                      <th scope="col">Momento</th>
+                                      <th scope="col">Hora</th>
+                                      <th scope="col">PA</th>
+                                      <th scope="col">FC</th>
+                                      <th scope="col">Temp</th>
+                                      <th scope="col">Glicemia</th>
+                                      <th scope="col">SatO2</th>
+                                      <th scope="col">UF acum.</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    @for (sv of sinaisOrdenados(det); track sv.idSinal) {
+                                      <tr>
+                                        <td class="tabular">{{ sv.seqLeitura ?? '—' }}</td>
+                                        <td>{{ sv.momento || '—' }}</td>
+                                        <td class="tabular">{{ sv.dataHora ? (sv.dataHora | date: 'HH:mm') : '—' }}</td>
+                                        <td class="tabular">{{ paSinal(sv) }}</td>
+                                        <td class="tabular">{{ sv.fc ?? '—' }}</td>
+                                        <td class="tabular">{{ sv.temperatura ?? '—' }}</td>
+                                        <td class="tabular">{{ sv.glicemia ?? '—' }}</td>
+                                        <td class="tabular">{{ sv.satO2 ?? '—' }}</td>
+                                        <td class="tabular">{{ sv.ufAcumuladaMl ?? '—' }}</td>
+                                      </tr>
+                                    }
+                                  </tbody>
+                                </table>
+                              </div>
+                            } @else {
+                              <p class="vazio-inline">Sem sinais vitais seriados registrados nesta sessão.</p>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Ação de escrita (nativa, não cancelada) -->
+                      @if (podeAgir(s)) {
+                        <div class="vh__acao nao-imprime">
+                          @if (!acaoAberta(s)) {
+                            <button type="button" class="nx-btn nx-btn--sm nx-btn--danger" (click)="abrirCancelar(s)">Cancelar</button>
+                          } @else {
+                            <div class="nx-acao-form">
+                              <label class="nx-campo nx-campo--full">
+                                <span class="nx-campo-lbl">Motivo do cancelamento <em>(obrigatório, mín. {{ MOTIVO_MIN }})</em></span>
+                                <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está cancelando?" />
+                              </label>
+                              @if (erroAcao()) { <p class="nx-erro" role="alert">{{ erroAcao() }}</p> }
+                              <div class="nx-form-acoes">
+                                <button type="button" class="nx-btn nx-btn--danger nx-btn--sm" (click)="confirmarCancelar(s)"
+                                  [disabled]="!acaoMotivoValido || processandoAcao()">
+                                  @if (processandoAcao()) { <span class="nx-spinner" aria-hidden="true"></span> Processando… } @else { Confirmar cancelamento }
+                                </button>
+                                <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rodape">
+        @if (!fimDaLista()) {
+          <button type="button" class="nx-btn" [disabled]="carregandoMais()" (click)="carregarMais()">
+            {{ carregandoMais() ? 'Carregando…' : 'Carregar mais' }}
+          </button>
+        } @else {
+          <span class="dica">Todas as sessões disponíveis foram carregadas.</span>
+        }
+      </div>
+    }
+  }
+</section>

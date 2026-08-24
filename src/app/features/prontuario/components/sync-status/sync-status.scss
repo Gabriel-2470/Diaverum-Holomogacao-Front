@@ -1,0 +1,72 @@
+:host {
+  display: inline-flex;
+}
+
+.pr-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--pr-text, #1f2d33);
+  font-variant-numeric: tabular-nums;
+
+  &__ponto {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pr-border, #d7e0e5);
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  &__texto {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: baseline;
+  }
+
+  &__rotulo {
+    font-weight: 600;
+  }
+
+  &__ha,
+  &__data,
+  &__origem {
+    color: color-mix(in srgb, var(--pr-text, #1f2d33) 70%, transparent);
+  }
+
+  &--ok {
+    .pr-sync__ponto {
+      background: var(--pr-accent, #2e7d5b);
+    }
+    .pr-sync__rotulo {
+      color: var(--pr-accent, #2e7d5b);
+    }
+  }
+
+  &--atencao {
+    .pr-sync__ponto {
+      background: var(--pr-warning, #b26a00);
+    }
+    .pr-sync__rotulo {
+      color: var(--pr-warning, #b26a00);
+    }
+  }
+
+  &--critico {
+    .pr-sync__ponto {
+      background: var(--pr-danger, #c62828);
+    }
+    .pr-sync__rotulo {
+      color: var(--pr-danger, #c62828);
+    }
+  }
+
+  &--desconhecido {
+    .pr-sync__ponto {
+      background: var(--pr-border, #d7e0e5);
+    }
+  }
+}

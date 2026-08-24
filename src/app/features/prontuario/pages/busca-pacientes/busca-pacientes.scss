@@ -1,0 +1,596 @@
+// Busca de pacientes — visual NephroSys modernizado (cards arredondados,
+// input com cantos suaves, grid denso via .nx-grid). Os tokens vem do tema.
+
+@use '../nx';
+@use '../nx-escrita'; // .nx-chip (+ variantes de situação: obito/transfer/transpl/cinza)
+
+.busca {
+  max-width: 1080px;
+  margin: 0 auto;
+  // Espaço extra embaixo para a barra fixa de seleção não cobrir a última linha.
+  padding: 12px 16px 96px;
+  font-variant-numeric: tabular-nums;
+
+  &__cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--pr-text, #1f2937);
+  }
+
+  &__subtitulo {
+    margin: 3px 0 0;
+    font-size: 12px;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  // Card arredondado (estados vazios / erro / skeleton).
+  &__card {
+    background: var(--pr-white, #fff);
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+
+  // Atalho discreto para a Fila de vínculo (só admin) — no canto do cabeçalho.
+  &__fila-link {
+    flex: none;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  // ---- Barra de filtros (container .nx-group discreto; empilha no mobile) ----
+  &__filtros {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 12px 14px;
+    margin: 0 0 10px;
+  }
+
+  &__campo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 240px;
+    min-width: 190px;
+  }
+
+  // Bloco label + select de cada filtro.
+  &__filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    &--tam {
+      .busca__select {
+        min-width: 88px;
+      }
+    }
+  }
+
+  &__filtro-lbl {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  &__select {
+    min-height: 40px;
+    min-width: 148px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--pr-text, #1f2937);
+    background: var(--pr-input-bg, #fff);
+    border: 1px solid var(--pr-input-border, #d7dce4);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus {
+      border-color: var(--pr-primary, #2563a8);
+      box-shadow: 0 0 0 3px rgba(37, 99, 168, 0.15);
+    }
+  }
+
+  // ---- Faixa etária: slider duplo (dual-thumb) estilo e-commerce ----
+  &__filtro--idade {
+    flex: 0 0 auto;
+  }
+
+  // Valor atual da seleção ao lado do rótulo "Idade" (ex.: "60 – 80 anos").
+  &__idade-valor {
+    margin-left: 4px;
+    font-weight: 700;
+    color: var(--pr-primary, #2563a8);
+  }
+
+  // Área do slider: dois <input type=range> sobrepostos + trilha + segmento ativo.
+  &__slider {
+    position: relative;
+    width: 200px;
+    height: 40px;
+  }
+
+  // Trilha fina cinza (fundo).
+  &__slider-trilha {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 11px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--pr-border, #cdd4de);
+  }
+
+  // Segmento ativo colorido entre as duas alças.
+  &__slider-ativo {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--pr-primary, #2563a8);
+  }
+
+  // Endpoints fixos "0" / "130" abaixo da trilha.
+  &__slider-limites {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 24px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    line-height: 1;
+    color: var(--pr-muted, #6b7280);
+    pointer-events: none;
+  }
+
+  // Cada alça é um range transparente ocupando toda a largura; só o thumb recebe
+  // o ponteiro (técnica clássica de dual-thumb sobreposto).
+  &__slider-thumb {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 26px;
+    margin: 0;
+    background: transparent;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+
+    &--min {
+      z-index: 3;
+    }
+    &--max {
+      z-index: 4;
+    }
+
+    &::-webkit-slider-runnable-track {
+      background: transparent;
+      border: none;
+      height: 26px;
+    }
+
+    &::-moz-range-track {
+      background: transparent;
+      border: none;
+      height: 26px;
+    }
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      pointer-events: auto;
+      margin-top: 5px; // centra o thumb de 16px na trilha (26px)
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--pr-white, #fff);
+      border: 2px solid var(--pr-primary, #2563a8);
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.2);
+      cursor: pointer;
+    }
+
+    &::-moz-range-thumb {
+      pointer-events: auto;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--pr-white, #fff);
+      border: 2px solid var(--pr-primary, #2563a8);
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.2);
+      cursor: pointer;
+    }
+
+    &:focus-visible::-webkit-slider-thumb {
+      outline: 2px solid var(--pr-primary, #2563a8);
+      outline-offset: 2px;
+    }
+    &:focus-visible::-moz-range-thumb {
+      outline: 2px solid var(--pr-primary, #2563a8);
+      outline-offset: 2px;
+    }
+  }
+
+  // Botão de exportação CSV (sempre visível, alinhado à base dos selects).
+  &__export {
+    align-self: flex-end;
+    white-space: nowrap;
+  }
+
+  // Falha discreta na exportação CSV.
+  &__export-erro {
+    align-self: flex-end;
+    font-size: 11.5px;
+    color: var(--pr-danger, #c0392b);
+    white-space: nowrap;
+  }
+
+  // "Limpar filtros" alinhado com a base dos selects.
+  &__limpar-filtros {
+    align-self: flex-end;
+    white-space: nowrap;
+  }
+
+  &__lupa {
+    position: absolute;
+    left: 11px;
+    font-size: 13px;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+
+  &__input {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 36px 8px 34px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--pr-text, #1f2937);
+    background: var(--pr-input-bg, #fff);
+    border: 1px solid var(--pr-input-border, #d7dce4);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--pr-muted, #9aa3b2);
+    }
+
+    &:focus {
+      border-color: var(--pr-primary, #2563a8);
+      box-shadow: 0 0 0 3px rgba(37, 99, 168, 0.15);
+    }
+  }
+
+  &__limpar {
+    position: absolute;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--pr-muted, #6b7280);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      background: #f2f6fc;
+      color: var(--pr-text, #1f2937);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--pr-primary, #2563a8);
+      outline-offset: 1px;
+    }
+  }
+
+  // ---- Chips de filtros ativos ----
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 2px 4px;
+  }
+
+  // Neutraliza o margin-left:auto do .nx-chip, dá cor neutra e acomoda o × interno.
+  // (.nx-chip base só traz layout; a cor vem das variantes — aqui usamos um tom neutro.)
+  &__chip {
+    margin-left: 0;
+    gap: 4px;
+    color: #566072;
+    background: #eef1f5;
+    border: 1px solid #dde2ea;
+
+    & + & {
+      margin-left: 0;
+    }
+  }
+
+  &__chip-x {
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 1px;
+    }
+  }
+
+  &__contagem {
+    margin: 4px 2px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    min-height: 1.1em;
+  }
+
+  &__estado,
+  &__skeleton {
+    padding: 16px;
+  }
+
+  &__tabela {
+    min-width: 760px;
+  }
+
+  // ---- Cabeçalho clicável de ordenação ----
+  &__th-ord {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-weight: 700;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--pr-primary, #2563a8);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--pr-primary, #2563a8);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+  }
+
+  &__th-seta {
+    font-size: 9px;
+    line-height: 1;
+    color: var(--pr-primary, #2563a8);
+  }
+
+  &__linha {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: none;
+
+      td {
+        background: #e7f0fb;
+        box-shadow: inset 0 0 0 1px var(--pr-primary, #2563a8);
+      }
+    }
+  }
+
+  &__nome {
+    font-weight: 600;
+  }
+
+  &__nome-link {
+    color: var(--pr-primary, #2563a8);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: none;
+      text-decoration: underline;
+    }
+  }
+
+  &__cpf {
+    color: var(--pr-muted, #6b7280);
+    letter-spacing: 0.02em;
+  }
+
+  &__idade {
+    color: var(--pr-muted, #6b7280);
+    white-space: nowrap;
+  }
+
+  &__ult-sessao {
+    color: var(--pr-muted, #6b7280);
+    white-space: nowrap;
+  }
+
+  // ---- Coluna de seleção (checkbox) ----
+  &__col-check {
+    width: 34px;
+    text-align: center;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  &__check {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--pr-primary, #2563a8);
+    vertical-align: middle;
+  }
+
+  // ---- Chip de situação dentro da célula (neutraliza o margin-left:auto do .nx-chip) ----
+  &__sit {
+    margin-left: 0;
+  }
+
+  &__ativo {
+    color: var(--pr-muted, #9aa3b2);
+    font-size: 11.5px;
+  }
+
+  // ---- Rodapé de paginação (info + ⏮ ‹ › ⏭) ----
+  &__paginacao {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 12px;
+  }
+
+  &__pag-info {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-text, #1f2937);
+  }
+
+  &__pag-botoes {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+
+  &__pag-btn {
+    min-width: 34px;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  // ---- Barra fixa de seleção (aparece quando há selecionados) ----
+  &__selbar {
+    position: fixed;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: calc(100vw - 24px);
+    padding: 10px 16px;
+    background: var(--pr-white, #fff);
+    border: 1px solid var(--pr-border, #cdd4de);
+    border-radius: 999px;
+    box-shadow: 0 6px 24px rgba(16, 24, 40, 0.18);
+
+    &-info {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--pr-text, #1f2937);
+      white-space: nowrap;
+    }
+
+    &-acoes {
+      display: flex;
+      gap: 8px;
+    }
+
+    &-imprimir {
+      color: #fff;
+      background: var(--pr-primary, #2563a8);
+      border-color: var(--pr-primary, #2563a8);
+
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--pr-primary, #2563a8) 88%, #000);
+        border-color: color-mix(in srgb, var(--pr-primary, #2563a8) 88%, #000);
+      }
+    }
+  }
+
+  // ---- Mobile: filtros empilham e ocupam a largura toda ----
+  @media (max-width: 640px) {
+    &__filtros {
+      align-items: stretch;
+    }
+
+    &__filtro,
+    &__campo {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+
+    &__select {
+      width: 100%;
+    }
+
+    // Faixa etária ocupa a largura toda; o slider estica.
+    &__filtro--idade {
+      flex: 1 1 100%;
+    }
+
+    &__slider {
+      width: 100%;
+    }
+
+    &__limpar-filtros {
+      align-self: stretch;
+      justify-content: center;
+    }
+
+    &__paginacao {
+      justify-content: center;
+    }
+
+    &__pag-botoes {
+      margin-left: 0;
+    }
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

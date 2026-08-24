@@ -144,15 +144,19 @@ export class AuthService {
             localStorage.setItem('token', tokenResp);
           }
 
+          const requerSelecao = (response as any).requerSelecaoUnidade ?? (response as any).RequerSelecaoUnidade ?? false;
+
           if (Array.isArray(unidadesResp) && unidadesResp.length > 0) {
-            const unidadePadrao =
-              unidadesResp.find((u: any) => u.unidadePadrao || u.UnidadePadrao || u.unidadePadrao === true) || unidadesResp[0];
-            localStorage.setItem('unidadeSelecionada', JSON.stringify(unidadePadrao));
-            // Salvar lista completa de unidades do usuário como fallback
             try {
               localStorage.setItem('unidadesUsuario', JSON.stringify(unidadesResp));
             } catch (e) {
               console.warn('Não foi possível salvar unidadesUsuario no localStorage', e);
+            }
+            // Só auto-seleciona se o usuário tem apenas uma clínica
+            if (!requerSelecao) {
+              const unidadePadrao =
+                unidadesResp.find((u: any) => u.unidadePadrao || u.UnidadePadrao) || unidadesResp[0];
+              localStorage.setItem('unidadeSelecionada', JSON.stringify(unidadePadrao));
             }
           } else {
             // Fallback: backend may return single user unit in other property names (IdUnidade / ID_UNIDADE)
@@ -257,12 +261,60 @@ export class AuthService {
     return user?.role === role;
   }
 
+  /** Permissão de acesso à área clínica de prontuário: ADMIN ou CLINICO. */
+  podeAcessarProntuario(): boolean {
+    const r = this.getRole();
+    return r === 'ADMIN' || r === 'CLINICO';
+  }
+
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
 
   getRole(): string | null {
     return this.currentUserSubject.value?.role || null;
+  }
+
+  // ==========================================
+  // CLÍNICA ATIVA (contexto) + PERFIL
+  // ==========================================
+
+  /** Define a clínica ativa (0 = todas/consolidador) e alinha o currentUser. */
+  definirUnidadeAtiva(idUnidade: number, descricao: string): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const user = this.currentUserSubject.value;
+    if (user) {
+      const atualizado = { ...user, idUnidade };
+      localStorage.setItem('currentUser', JSON.stringify(atualizado));
+      this.currentUserSubject.next(atualizado);
+    }
+    localStorage.setItem(
+      'unidadeSelecionada',
+      JSON.stringify({ idUnidade, iD_UNIDADE: idUnidade, descricao, Descricao: descricao })
+    );
+  }
+
+  getUnidadeAtiva(): { id: number | null; nome: string } {
+    if (!isPlatformBrowser(this.platformId)) return { id: null, nome: '' };
+    const raw = localStorage.getItem('unidadeSelecionada');
+    if (raw) {
+      try {
+        const u = JSON.parse(raw);
+        return {
+          id: u.idUnidade ?? u.iD_UNIDADE ?? u.ID_UNIDADE ?? null,
+          nome: u.descricao ?? u.Descricao ?? u.DESCRICAO ?? '',
+        };
+      } catch {}
+    }
+    return { id: this.currentUserSubject.value?.idUnidade ?? null, nome: '' };
+  }
+
+  /** Troca a própria senha (Meu Perfil). */
+  alterarSenha(senhaAtual: string, novaSenha: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/usuarios/alterar-senha`, {
+      SenhaAtual: senhaAtual,
+      NovaSenha: novaSenha,
+    });
   }
 
   isSessionChecked(): boolean {
@@ -279,10 +331,32 @@ export class AuthService {
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  selecionarUnidade(unidade: any): void {
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.setItem('unidadeSelecionada', JSON.stringify(unidade));
+    }
+  }
+
+  hasUnidadeSelecionada(): boolean {
+    if (!isPlatformBrowser(this.platformId)) return false;
+    return !!localStorage.getItem('unidadeSelecionada');
+  }
+
+  getUnidadesUsuario(): any[] {
+    if (!isPlatformBrowser(this.platformId)) return [];
+    try {
+      const json = localStorage.getItem('unidadesUsuario');
+      return json ? JSON.parse(json) : [];
+    } catch {
+      return [];
+    }
+  }
+
   private clearUserData(): void {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('unidadeSelecionada');
+      localStorage.removeItem('unidadesUsuario');
       localStorage.removeItem('token');
     }
     this.currentUserSubject.next(null);

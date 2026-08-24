@@ -50,9 +50,10 @@ export class LoginComponent implements OnInit {
     };
 
     this.authService.login(credentials).subscribe({
-      next: () => {
+      next: (response) => {
         this.isLoading = false;
-        this.router.navigate(['/home']);
+        const requerSelecao = response.requerSelecaoUnidade ?? (response as any).RequerSelecaoUnidade ?? false;
+        this.router.navigate([requerSelecao ? '/selecionar-clinica' : '/home']);
       },
       error: (error) => {
         this.isLoading = false;

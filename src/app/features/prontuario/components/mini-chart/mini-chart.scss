@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.mini-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  &__svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    overflow: visible;
+  }
+
+  &__linha {
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  &__ponto {
+    transition: r 0.1s ease;
+
+    &--ultimo {
+      stroke: var(--pr-surface, #fff);
+      stroke-width: 1.2;
+    }
+
+    &--hover {
+      r: 4;
+    }
+  }
+
+  &__alvo {
+    fill: transparent;
+    cursor: default;
+  }
+
+  &__legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.9rem;
+    font-size: 0.72rem;
+    color: var(--pr-text, #1f2d33);
+  }
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  &__cor {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    display: inline-block;
+    flex: 0 0 auto;
+  }
+
+  &__ultimo {
+    font-weight: 700;
+  }
+
+  &__vazio {
+    margin: 0;
+    padding: 0.5rem 0;
+    font-size: 0.8rem;
+    color: var(--pr-text, #1f2d33);
+    opacity: 0.7;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

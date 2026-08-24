@@ -1,0 +1,164 @@
+@use '../nx';
+@use '../nx-escrita';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.titulo-hd {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--pr-text, #1c1c1c);
+}
+
+.barra-filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  flex-wrap: wrap;
+}
+
+.barra-filtro .rotulo {
+  color: var(--pr-muted, #5a5a5a);
+}
+
+.inp-data {
+  flex: 0 0 auto;
+  width: 132px;
+  height: 24px;
+  font: 12px 'Segoe UI', Tahoma, sans-serif;
+}
+
+.total {
+  margin-left: auto;
+}
+
+.linha-detalhe > td {
+  background: var(--pr-surface, #f7f7f7);
+  padding: 8px;
+}
+
+.intercorrencia {
+  margin: 0 0 6px;
+}
+
+.rodape {
+  margin-top: 8px;
+}
+
+// ---------------------------------------------------------------------------
+// Escrita nativa de sessões de HD (Etapa 4) — atrás da flag de ambiente
+// ---------------------------------------------------------------------------
+.vh {
+  &__escrita {
+    margin: 0 0 12px;
+  }
+
+  &__escrita-barra {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    flex-wrap: wrap;
+  }
+
+  &__escrita-sep {
+    flex: 1 1 auto;
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: var(--pr-primary, #2563a8);
+    }
+  }
+
+  &__form {
+    margin: 0 0 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 10px;
+    background: var(--pr-group-head, #f6f8fb);
+  }
+
+  // Campo do tipo checkbox (label horizontal, alinhado à base dos campos)
+  &__check-campo {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-end;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: var(--pr-primary, #2563a8);
+      width: auto;
+    }
+  }
+
+  &__sinais {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-basis: 100%;
+  }
+
+  &__sinais-head {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pr-muted, #6b7280);
+
+    em {
+      font-style: normal;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+  }
+
+  &__sinal {
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 8px;
+    padding: 8px 12px 12px;
+    background: var(--pr-input-bg, #fff);
+
+    legend {
+      font-weight: 700;
+      font-size: 11.5px;
+      color: var(--pr-muted, #6b7280);
+      padding: 0 4px;
+    }
+  }
+
+  &__sinal-rm {
+    margin-top: 10px;
+  }
+
+  &__add {
+    flex-basis: 100%;
+    align-self: flex-start;
+  }
+
+  &__acao {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--pr-border-soft, #eef1f5);
+  }
+}

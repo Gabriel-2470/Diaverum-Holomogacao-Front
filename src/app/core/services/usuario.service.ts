@@ -6,20 +6,49 @@ import { environment } from '../../../environments/environment';
 
 interface UsuarioDTO {
   iD_USER?: number;
+  id_USER?: number;
   ID_USER?: number;
   nomE_USER?: string;
+  nome_USER?: string;
   NOME_USER?: string;
+  acesso?: string;
+  aCESSO?: string;
+  ACESSO?: string;
   email?: string;
-  // Pode vir como 'role' (cliente) ou 'ROLE' (API/DB)
+  eMAIL?: string;
+  EMAIL?: string;
   role?: string;
+  rOLE?: string;
   ROLE?: string;
+  ativo?: number;
+  aTIVO?: number;
+  ATIVO?: number;
+  idUnidade?: number;
+  iD_UNIDADE?: number;
+  id_UNIDADE?: number;
+  ID_UNIDADE?: number;
 }
 
-interface Usuario {
+export interface Usuario {
   id: number;
   nome: string;
   email: string;
-  role?: string;
+  role: string;
+  acesso?: string;
+  ativo?: boolean;
+  qtdUnidades?: number;
+  dataCriacao?: string;
+}
+
+export interface UnidadeUsuario {
+  idUnidade: number;
+  descricao: string;
+  unidadePadrao: boolean;
+  dataVinculo?: string;
+}
+
+export interface UsuarioDetalhes extends Usuario {
+  unidades: UnidadeUsuario[];
 }
 
 @Injectable({
@@ -30,38 +59,123 @@ export class UsuarioService {
 
   constructor(private http: HttpClient) {}
 
-  /**
-   * Busca usuário por ID
-   */
-  buscarUsuarioPorId(id: number): Observable<Usuario | null> {
-    return this.http.get<any>(`${this.apiUrl}/usuarios/${id}`).pipe(
+  // Admin endpoints (TBL_USUARIO_UNIDADES)
+  buscarUsuariosAdmin(): Observable<Usuario[]> {
+    return this.http.get<any>(`${this.apiUrl}/admin/usuarios`).pipe(
       map((response) => {
-        const usuario = response.dados || response;
-        if (!usuario) return null;
+        const dados = response.dados || [];
+        return dados.map((u: any) => ({
+          id: u.idUser || u.id,
+          nome: u.nome,
+          email: u.email,
+          role: u.role,
+          acesso: u.acesso,
+          ativo: u.ativo,
+          qtdUnidades: u.qtdUnidades,
+          dataCriacao: u.dataCriacao,
+        }));
+      })
+    );
+  }
 
+  buscarUsuarioDetalhe(id: number): Observable<UsuarioDetalhes | null> {
+    return this.http.get<any>(`${this.apiUrl}/admin/usuarios/${id}`).pipe(
+      map((response) => {
+        const u = response.dados || response;
+        if (!u) return null;
         return {
-          id: usuario.iD_USER || usuario.ID_USER || id,
-          nome: usuario.nomE_USER || usuario.NOME_USER || 'N/A',
-          email: usuario.email || '',
+          id: u.idUser,
+          nome: u.nome,
+          email: u.email,
+          role: u.role,
+          acesso: u.acesso,
+          ativo: u.ativo,
+          unidades: u.unidades || [],
         };
       })
     );
   }
 
-  /**
-   * Busca todos os usuários
-   */
+  vincularClinica(idUsuario: number, idUnidade: number, unidadePadrao = false): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/admin/usuarios/${idUsuario}/unidades`, {
+      idUnidade,
+      unidadePadrao,
+    });
+  }
+
+  desvincularClinica(idUsuario: number, idUnidade: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/admin/usuarios/${idUsuario}/unidades/${idUnidade}`);
+  }
+
+  buscarUsuarioPorId(id: number): Observable<Usuario | null> {
+    return this.http.get<any>(`${this.apiUrl}/usuarios/${id}`).pipe(
+      map((response) => {
+        const usuario = response.dados || response;
+        if (!usuario) return null;
+        return {
+          id: usuario.iD_USER || usuario.ID_USER || id,
+          nome: usuario.nomE_USER || usuario.NOME_USER || 'N/A',
+          email: usuario.email || '',
+          role: usuario.role || usuario.ROLE || '',
+        };
+      })
+    );
+  }
+
   buscarUsuarios(): Observable<Usuario[]> {
     return this.http.get<any>(`${this.apiUrl}/usuarios`).pipe(
       map((response) => {
         const usuarios = response.dados || response || [];
         return usuarios.map((u: UsuarioDTO) => ({
-          id: u.iD_USER || u.ID_USER || 0,
-          nome: u.nomE_USER || u.NOME_USER || 'N/A',
-          email: u.email || '',
-          role: (u.role as string) || (u.ROLE as string) || ''
+          id: u.iD_USER || u.id_USER || u.ID_USER || 0,
+          nome: u.nomE_USER || u.nome_USER || u.NOME_USER || 'N/A',
+          email: u.email || u.eMAIL || u.EMAIL || '',
+          role: u.role || u.rOLE || u.ROLE || '',
+          acesso: u.acesso || u.aCESSO || u.ACESSO || '',
+          ativo: u.ativo ?? u.aTIVO ?? u.ATIVO,
         }));
       })
     );
+  }
+
+  criarUsuario(usuario: {
+    nomeUser: string;
+    acesso: string;
+    senha: string;
+    email: string;
+    role: string;
+    idUnidade?: number;
+  }): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/usuarios`, {
+      NOME_USER: usuario.nomeUser,
+      ACESSO: usuario.acesso,
+      PWD: usuario.senha,
+      EMAIL: usuario.email,
+      ROLE: usuario.role,
+      ATIVO: true,
+      ID_UNIDADE: usuario.idUnidade || null,
+    });
+  }
+
+  atualizarUsuario(id: number, usuario: {
+    nomeUser?: string;
+    acesso?: string;
+    email?: string;
+    role?: string;
+    senha?: string;
+    idUnidade?: number;
+  }): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/usuarios/${id}`, {
+      NOME_USER: usuario.nomeUser,
+      ACESSO: usuario.acesso,
+      PWD: usuario.senha,
+      EMAIL: usuario.email,
+      ROLE: usuario.role,
+      ID_UNIDADE: usuario.idUnidade || null,
+    });
+  }
+
+  deletarUsuario(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/usuarios/${id}`);
   }
 }

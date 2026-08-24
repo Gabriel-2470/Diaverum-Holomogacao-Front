@@ -1,0 +1,51 @@
+<section class="pagina-sol-exames prontuario-theme" aria-label="Solicitação de Exames">
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Solicitações de Exame</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="6" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (grupos().length === 0) {
+    <div class="nx-aviso-origem">
+      ⚠ Este paciente não possui solicitações de exames no histórico migrado.
+    </div>
+    <pr-estado-vazio icone="—" titulo="Sem solicitações registradas" descricao="Nenhuma solicitação de exame foi enviada para este paciente." />
+  } @else {
+    @for (g of grupos(); track g.chaveOrdenacao) {
+      <div class="nx-group">
+        <div class="nx-group-head">Competência {{ g.competencia }}</div>
+        <div class="nx-grid-wrap">
+          <table class="nx-grid">
+            <thead>
+              <tr>
+                <th scope="col">Competência</th>
+                <th scope="col">Exame</th>
+                <th scope="col">Solicitado</th>
+                <th scope="col">Extra</th>
+                <th scope="col">Observação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of g.itens; track e.idSolExame) {
+                <tr>
+                  <td class="tabular">{{ g.competencia }}</td>
+                  <td>{{ e.nomeExame || e.codigoExameLocal || '—' }}</td>
+                  <td>{{ e.indSolicitado ? 'Sim' : '—' }}</td>
+                  <td>{{ e.indExtra ? 'Sim' : '—' }}</td>
+                  <td>{{ e.observacao || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</section>

@@ -1,0 +1,195 @@
+<div class="medicos-page">
+  <header class="page-header">
+    <div>
+      <h2>Cadastro de Médicos</h2>
+      <p class="subtitulo">Médicos solicitantes usados nos pedidos de exame (integração Hygia).</p>
+    </div>
+    @if (ehAdmin) {
+      <button class="btn btn-primary" (click)="novo()">+ Novo médico</button>
+    }
+  </header>
+
+  @if (erroLista) {
+    <div class="alert alert-erro">{{ erroLista }}</div>
+  }
+
+  <!-- Formulário (novo / editar) -->
+  @if (mostrarForm) {
+    <div class="card form-card">
+      <h3>{{ editando ? 'Editar médico' : 'Novo médico' }}</h3>
+
+      @if (erro) {
+        <div class="alert alert-erro">{{ erro }}</div>
+      }
+
+      <div class="form-grid">
+        <label class="campo campo-2">
+          <span>Nome <b>*</b></span>
+          <input type="text" [(ngModel)]="form.NOME" placeholder="Nome completo do médico" />
+        </label>
+
+        <label class="campo">
+          <span>CPF <b>*</b></span>
+          <input type="text" [(ngModel)]="form.CPF" placeholder="000.000.000-00" maxlength="14" />
+        </label>
+
+        <label class="campo">
+          <span>CRM</span>
+          <input type="text" [(ngModel)]="form.CRM" placeholder="123456" />
+        </label>
+
+        <label class="campo campo-uf">
+          <span>UF do CRM</span>
+          <input type="text" [(ngModel)]="form.UF_CRM" placeholder="SP" maxlength="2" />
+        </label>
+
+        <label class="campo campo-check">
+          <input type="checkbox" [(ngModel)]="form.IND_ATIVO" />
+          <span>Ativo</span>
+        </label>
+      </div>
+
+      <div class="form-acoes">
+        <button class="btn btn-secondary" (click)="cancelar()" [disabled]="salvando">Cancelar</button>
+        <button class="btn btn-primary" (click)="salvar()" [disabled]="salvando">
+          {{ salvando ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Lista -->
+  <div class="card">
+    @if (carregando) {
+      <p class="estado">Carregando médicos...</p>
+    } @else if (medicos.length === 0) {
+      <p class="estado">Nenhum médico cadastrado ainda.</p>
+    } @else {
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>CPF</th>
+              <th>CRM</th>
+              <th>Status</th>
+              <th class="col-acoes">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of medicos; track m.iD_MEDICO) {
+              <tr [class.linha-inativa]="!m.inD_ATIVO">
+                <td>{{ m.nome }}</td>
+                <td>{{ cpfExibicao(m.cpf) }}</td>
+                <td>{{ m.crm ? (m.crm + (m.uF_CRM ? '/' + m.uF_CRM : '')) : '—' }}</td>
+                <td>
+                  <span class="badge" [class.badge-ativo]="m.inD_ATIVO" [class.badge-inativo]="!m.inD_ATIVO">
+                    {{ m.inD_ATIVO ? 'Ativo' : 'Inativo' }}
+                  </span>
+                </td>
+                <td class="col-acoes">
+                  @if (ehAdmin) {
+                    <button class="btn-icone" (click)="editar(m)" title="Editar">Editar</button>
+                    @if (m.inD_ATIVO) {
+                      <button class="btn-icone btn-perigo" (click)="excluir(m)" title="Desativar">Desativar</button>
+                    }
+                  } @else {
+                    <span class="somente-leitura">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- Médicos por clínica -->
+  <div class="card">
+    <h3 class="secao-titulo">Médicos por clínica</h3>
+    <p class="subtitulo">
+      Defina quais médicos atendem cada clínica e qual é o <b>padrão</b> (pré-selecionado no agendamento).
+    </p>
+
+    <div class="vinculo-topo">
+      <label class="campo">
+        <span>Clínica</span>
+        <select [(ngModel)]="unidadeSelId" (change)="onSelecionarUnidade()" [disabled]="!ehConsolidador">
+          @if (ehConsolidador) {
+            <option [ngValue]="null">Selecione uma clínica...</option>
+          }
+          @for (u of unidades; track u.iD_UNIDADE) {
+            <option [ngValue]="u.iD_UNIDADE">{{ u.descricao }}</option>
+          }
+        </select>
+      </label>
+      @if (!ehConsolidador) {
+        <p class="hint">Você gerencia apenas os médicos da sua clínica.</p>
+      }
+    </div>
+
+    @if (unidadeSelId != null) {
+      @if (erroVinculo) {
+        <div class="alert alert-erro">{{ erroVinculo }}</div>
+      }
+
+      <div class="vinculo-add">
+        <label class="campo campo-2">
+          <span>Adicionar médico à clínica</span>
+          <select [(ngModel)]="medicoAddId">
+            <option [ngValue]="null">Selecione um médico...</option>
+            @for (m of medicosDisponiveis; track m.iD_MEDICO) {
+              <option [ngValue]="m.iD_MEDICO">{{ m.nome }} — {{ formatarCpf(m.cpf) }}</option>
+            }
+          </select>
+        </label>
+        <div class="vinculo-add-acoes">
+          <button class="btn btn-secondary" (click)="adicionarMedicoNaUnidade(false)" [disabled]="medicoAddId == null">
+            Adicionar
+          </button>
+          <button class="btn btn-primary" (click)="adicionarMedicoNaUnidade(true)" [disabled]="medicoAddId == null">
+            Adicionar como padrão
+          </button>
+        </div>
+      </div>
+
+      @if (carregandoVinculo) {
+        <p class="estado">Carregando...</p>
+      } @else if (medicosDaUnidade.length === 0) {
+        <p class="estado">Nenhum médico vinculado a esta clínica.</p>
+      } @else {
+        <div class="tabela-wrap">
+          <table class="tabela">
+            <thead>
+              <tr>
+                <th>Médico</th>
+                <th>CRM</th>
+                <th>Padrão</th>
+                <th class="col-acoes">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of medicosDaUnidade; track m.iD_MEDICO) {
+                <tr>
+                  <td>{{ m.nome }}</td>
+                  <td>{{ m.crm ? (m.crm + (m.uF_CRM ? '/' + m.uF_CRM : '')) : '—' }}</td>
+                  <td>
+                    @if (m.inD_PADRAO) {
+                      <span class="badge badge-padrao">★ Padrão</span>
+                    } @else {
+                      <button class="btn-icone" (click)="definirPadrao(m)">Tornar padrão</button>
+                    }
+                  </td>
+                  <td class="col-acoes">
+                    <button class="btn-icone btn-perigo" (click)="removerDaUnidade(m)">Remover</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { UnidadeService, Unidade } from '../../../core/services/unidade.service';
 
 @Component({
   selector: 'app-header',
@@ -15,7 +16,17 @@ export class HeaderComponent implements OnInit {
   userRole = '';
   menuAberto = false;
 
-  constructor(public router: Router, private authService: AuthService) {}
+  // clínica ativa
+  clinicaNome = '';
+  podeTrocar = false;
+  seletorAberto = false;
+  clinicas: Unidade[] = [];
+
+  constructor(
+    public router: Router,
+    private authService: AuthService,
+    private unidadeService: UnidadeService
+  ) {}
 
   ngOnInit(): void {
     const user = this.authService.getCurrentUser();
@@ -23,6 +34,42 @@ export class HeaderComponent implements OnInit {
       this.userName = user.nome;
       this.userRole = this.getRoleDisplay(user.role);
     }
+
+    const idUn = user?.idUnidade ?? null;
+    const consolidador = idUn == null || idUn === 0;
+    // admin ou consolidador podem trocar de clínica
+    this.podeTrocar = this.authService.isAdmin() || consolidador;
+
+    const ativa = this.authService.getUnidadeAtiva();
+    this.clinicaNome = ativa.nome || (consolidador ? 'Todas as clínicas' : '');
+
+    if (this.podeTrocar) {
+      this.unidadeService.buscarUnidades().subscribe({
+        next: (u) => {
+          this.clinicas = u || [];
+          if (!this.clinicaNome && ativa.id != null) {
+            const achou = this.clinicas.find((c) => c.iD_UNIDADE === ativa.id);
+            if (achou) this.clinicaNome = achou.descricao;
+          }
+        },
+        error: () => {},
+      });
+    }
+  }
+
+  toggleSeletor(): void {
+    if (this.podeTrocar) this.seletorAberto = !this.seletorAberto;
+  }
+
+  trocarClinica(id: number, nome: string): void {
+    this.authService.definirUnidadeAtiva(id, nome);
+    this.seletorAberto = false;
+    // recarrega para todas as telas refletirem a clínica ativa
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+
+  isAdmin(): boolean {
+    return this.authService.isAdmin();
   }
 
   toggleMenu(): void {

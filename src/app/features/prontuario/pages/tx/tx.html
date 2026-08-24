@@ -1,0 +1,61 @@
+<section class="pagina-tx prontuario-theme" aria-label="Transplante">
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Transplante</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="6" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (transplante(); as t) {
+    <!-- Lista de espera -->
+    <div class="nx-group">
+      <div class="nx-group-head">Lista de espera</div>
+      <div class="nx-group-body nx-fields nx-fields--2">
+        <div class="nx-field"><span class="nx-label">Em lista:</span><span class="nx-input">{{ simNao(t.emLista) }}</span></div>
+        <div class="nx-field"><span class="nx-label">Situação:</span><span class="nx-input">{{ t.situacaoLista || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Inscrição:</span><span class="nx-input tabular">{{ (t.dataInscricao | date: 'dd/MM/yyyy') || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Urgência:</span><span class="nx-input">{{ simNao(t.indUrgencia) }}</span></div>
+        <div class="nx-field"><span class="nx-label">Rim:</span><span class="nx-input">{{ simNao(t.indTxRim) }}</span></div>
+        <div class="nx-field"><span class="nx-label">Pâncreas:</span><span class="nx-input">{{ simNao(t.indTxPancreas) }}</span></div>
+        <div class="nx-field nx-field--wide"><span class="nx-label">Cód. SNT:</span><span class="nx-input tabular">{{ t.codSnt || '—' }}</span></div>
+      </div>
+    </div>
+
+    <!-- Imunologia (HLA / PRA) -->
+    <div class="nx-group">
+      <div class="nx-group-head">Imunologia (HLA / PRA)</div>
+      <div class="nx-group-body nx-fields nx-fields--3">
+        <div class="nx-field"><span class="nx-label">HLA-A:</span><span class="nx-input">{{ t.hlaA || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">HLA-B:</span><span class="nx-input">{{ t.hlaB || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">HLA-DR:</span><span class="nx-input">{{ t.hlaDr || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">HLA-DQ:</span><span class="nx-input">{{ t.hlaDq || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">HLA-DW:</span><span class="nx-input">{{ t.hlaDw || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">PRA:</span><span class="nx-input tabular">{{ t.pra != null ? t.pra + '%' : '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Data PRA:</span><span class="nx-input tabular">{{ (t.dataPra | date: 'dd/MM/yyyy') || '—' }}</span></div>
+      </div>
+    </div>
+
+    <!-- Centro / Equipe vinculada -->
+    <div class="nx-group">
+      <div class="nx-group-head">Centro/Equipe Vinculada</div>
+      <div class="nx-group-body nx-fields nx-fields--2">
+        <div class="nx-field"><span class="nx-label">Centro:</span><span class="nx-input">{{ t.centroVinculo || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Equipe:</span><span class="nx-input">{{ t.equipeVinculo || '—' }}</span></div>
+        <div class="nx-field nx-field--wide"><span class="nx-label">Observação:</span><span class="nx-input nx-input--bloco nx-input--multilinha">{{ t.observacao || '—' }}</span></div>
+      </div>
+    </div>
+  } @else {
+    <div class="nx-aviso-origem">⚠ Este paciente não possui registro de transplante no histórico migrado.</div>
+    <pr-estado-vazio
+      icone="—"
+      titulo="Sem dados de transplante"
+      descricao="A origem não enviou informações de transplante ou lista de espera para este paciente."
+    />
+  }
+</section>

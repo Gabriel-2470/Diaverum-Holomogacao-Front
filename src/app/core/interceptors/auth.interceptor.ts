@@ -36,11 +36,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         // Log detalhado para diagnóstico
         console.error('HTTP 401 received for', req.url, 'while at', currentUrl);
 
-        // Não limpar todo o estado do localStorage automaticamente — remover apenas o token
-        // para forçar re-login, preservando `currentUser` e `unidadeSelecionada` para manter
-        // a visualização do usuário até que ele reconfirme a sessão.
         if (!isLoginPage) {
           localStorage.removeItem('token');
+          localStorage.removeItem('unidadeSelecionada');
+          localStorage.removeItem('unidadesUsuario');
           router.navigate(['/login']);
         }
       }

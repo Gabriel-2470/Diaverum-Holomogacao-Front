@@ -1,0 +1,145 @@
+@use '../nx';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.resumo {
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  &__prescricao {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .resumo__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lista-eventos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  &__ponto {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    margin-top: 0.28rem;
+    flex: 0 0 auto;
+  }
+
+  &__conteudo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  &__tipo {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--pr-muted, #6b7280);
+    font-weight: 700;
+  }
+
+  &__titulo {
+    font-size: 0.88rem;
+    color: var(--pr-text, #1f2937);
+  }
+
+  &__data {
+    font-size: 0.74rem;
+    color: var(--pr-muted, #6b7280);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.lista-simples {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  &__texto {
+    font-size: 0.88rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--pr-text, #1f2937);
+  }
+}
+
+.chip-cid {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 5px;
+  background: var(--pr-group-head, #f6f8fb);
+  border: 1px solid var(--pr-border-soft, #e3e7ee);
+  color: var(--pr-primary, #2563a8);
+  font-variant-numeric: tabular-nums;
+}
+
+.tag-principal {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--pr-accent, #2e7d32);
+}
+
+.tag-criticidade {
+  font-size: 0.68rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pr-danger, #c0392b) 12%, transparent);
+  color: var(--pr-danger, #c0392b);
+  font-weight: 600;
+}
+
+.ponto-alerta {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--pr-danger, #c0392b);
+  flex: 0 0 auto;
+}
+
+.link-ver {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--pr-primary, #2563a8);
+  text-decoration: none;
+  font-weight: 600;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

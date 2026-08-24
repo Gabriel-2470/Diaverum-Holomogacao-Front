@@ -1,0 +1,48 @@
+:host {
+  display: block;
+}
+
+.pr-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__linha {
+    display: block;
+    width: 100%;
+    border-radius: var(--pr-radius-sm, 6px);
+    background: var(--pr-surface-alt, #eef3f5);
+    position: relative;
+    overflow: hidden;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+      );
+      animation: pr-skel-shimmer 1.3s infinite;
+    }
+
+    &--curta {
+      width: 60%;
+    }
+  }
+}
+
+@keyframes pr-skel-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-skel__linha::after {
+    animation: none;
+  }
+}

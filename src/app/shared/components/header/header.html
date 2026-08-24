@@ -73,7 +73,87 @@
         </svg>
         <span>Importação</span>
       </button>
+
+      <button
+        class="nav-link"
+        [class.active]="router.url === '/importacao-paginacao'"
+        (click)="navigateTo('/importacao-paginacao')"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span>Importação Paginação</span>
+      </button>
+
+      <button
+        *ngIf="isAdmin()"
+        class="nav-link"
+        [class.active]="router.url === '/usuarios'"
+        (click)="navigateTo('/usuarios')"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+        <span>Usuários</span>
+      </button>
     </nav>
+
+    <!-- Seletor de Clínica ativa -->
+    <div class="header-clinica">
+      <button class="clinica-btn" [class.clickable]="podeTrocar" (click)="toggleSeletor()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"></path>
+          <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
+          <path d="M12 7v6"></path>
+          <path d="M9 10h6"></path>
+        </svg>
+        <span class="clinica-nome">{{ clinicaNome || 'Todas as clínicas' }}</span>
+        @if (podeTrocar) {
+          <svg class="chevron" [class.rotated]="seletorAberto" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        }
+      </button>
+
+      @if (podeTrocar && seletorAberto) {
+        <div class="clinica-dropdown show">
+          <button class="dropdown-item" (click)="trocarClinica(0, 'Todas as clínicas')">
+            Todas as clínicas
+          </button>
+          <div class="dropdown-divider"></div>
+          @for (c of clinicas; track c.iD_UNIDADE) {
+            <button class="dropdown-item" (click)="trocarClinica(c.iD_UNIDADE, c.descricao)">
+              {{ c.descricao }}
+            </button>
+          }
+        </div>
+      }
+    </div>
 
     <!-- User Info e Menu -->
     <div class="header-user">

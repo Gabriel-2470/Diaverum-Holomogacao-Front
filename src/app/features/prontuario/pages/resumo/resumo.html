@@ -1,0 +1,119 @@
+<section class="resumo prontuario-theme" aria-label="Resumo clinico">
+  @if (carregando()) {
+    <div class="resumo__grid">
+      <div class="nx-group"><div class="nx-group-body"><pr-skeleton [linhas]="5" /></div></div>
+      <div class="nx-group"><div class="nx-group-body"><pr-skeleton [linhas]="5" /></div></div>
+      <div class="nx-group"><div class="nx-group-body"><pr-skeleton [linhas]="4" /></div></div>
+      <div class="nx-group"><div class="nx-group-body"><pr-skeleton [linhas]="4" /></div></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar o resumo"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (resumo()) {
+    <div class="resumo__grid">
+      <!-- Ultimos eventos -->
+      <article class="nx-group" aria-labelledby="tit-eventos">
+        <div id="tit-eventos" class="nx-group-head">Últimos eventos</div>
+        <div class="nx-group-body">
+          @if (ultimosEventos().length) {
+            <ul class="lista-eventos">
+              @for (e of ultimosEventos(); track $index) {
+                <li class="lista-eventos__item">
+                  <span class="lista-eventos__ponto" [style.background]="e.cor"></span>
+                  <span class="lista-eventos__conteudo">
+                    <span class="lista-eventos__tipo">{{ e.tipo }}</span>
+                    <span class="lista-eventos__titulo">{{ e.titulo }}</span>
+                  </span>
+                  @if (e.data) {
+                    <span class="lista-eventos__data tabular">{{ formatarData(e.data) }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="vazio-inline">Sem eventos recentes.</p>
+          }
+        </div>
+      </article>
+
+      <!-- Mini-chart peso pre/pos -->
+      <article class="nx-group" aria-labelledby="tit-peso">
+        <div id="tit-peso" class="nx-group-head">Peso pré/pós — últimas sessões</div>
+        <div class="nx-group-body">
+          @if (temGraficoPeso()) {
+            <pr-mini-chart [series]="seriesPeso()" titulo="Peso pré e pós-diálise" [altura]="80" />
+          } @else {
+            <p class="vazio-inline">Sem sessões recentes para o gráfico.</p>
+          }
+        </div>
+      </article>
+
+      <!-- Problemas ativos -->
+      <article class="nx-group" aria-labelledby="tit-problemas">
+        <div id="tit-problemas" class="nx-group-head">Problemas ativos (CID)</div>
+        <div class="nx-group-body">
+          @if (resumo()!.problemasAtivos.length) {
+            <ul class="lista-simples">
+              @for (p of resumo()!.problemasAtivos; track $index) {
+                <li class="lista-simples__item">
+                  <span class="chip-cid tabular">{{ p.cid10 || '—' }}</span>
+                  <span class="lista-simples__texto">{{ p.descricao }}</span>
+                  @if (p.principal) {
+                    <span class="tag-principal">principal</span>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="vazio-inline">Nenhum problema ativo registrado.</p>
+          }
+        </div>
+      </article>
+
+      <!-- Alergias -->
+      <article class="nx-group" aria-labelledby="tit-alergias">
+        <div id="tit-alergias" class="nx-group-head">Alergias</div>
+        <div class="nx-group-body">
+          @if (resumo()!.alergias.length) {
+            <ul class="lista-simples">
+              @for (a of resumo()!.alergias; track $index) {
+                <li class="lista-simples__item">
+                  <span class="ponto-alerta" aria-hidden="true"></span>
+                  <span class="lista-simples__texto">{{ a.substancia }}</span>
+                  @if (a.criticidade) {
+                    <span class="tag-criticidade">{{ a.criticidade }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="vazio-inline">Nenhuma alergia registrada.</p>
+          }
+        </div>
+      </article>
+
+      <!-- Prescricao vigente -->
+      <article class="nx-group resumo__prescricao" aria-labelledby="tit-presc">
+        <div id="tit-presc" class="nx-group-head">Prescrição vigente</div>
+        <div class="nx-group-body">
+          @if (resumo()!.prescricaoVigente; as p) {
+            <div class="nx-fields nx-fields--2">
+              <div class="nx-field"><span class="nx-label">Tipo:</span><span class="nx-input">{{ p.tipo || '—' }}</span></div>
+              <div class="nx-field"><span class="nx-label">Prescritor:</span><span class="nx-input">{{ p.prescritorNome || '—' }}</span></div>
+              <div class="nx-field"><span class="nx-label">Início:</span><span class="nx-input tabular">{{ formatarData(p.dataInicio) }}</span></div>
+              <div class="nx-field"><span class="nx-label">Fim:</span><span class="nx-input tabular">{{ p.dataFim ? formatarData(p.dataFim) : 'Sem término' }}</span></div>
+            </div>
+            <a class="link-ver" routerLink="../medicacoes">Ver medicações</a>
+          } @else {
+            <p class="vazio-inline">Nenhuma prescrição vigente.</p>
+          }
+        </div>
+      </article>
+    </div>
+  }
+</section>

@@ -1,0 +1,212 @@
+<div class="ps">
+  @if (erro()) {
+    <!-- Estados de erro como "janela de dialogo" NephroSys -->
+    <div class="ps__erro-wrap">
+      <div class="ps__erro" role="alert">
+        <div class="nx-titlebar">Prontuário</div>
+        <div class="ps__erro-corpo">
+          @switch (erro()) {
+            @case ('revisao') {
+              <span class="ps__erro-icone ps__erro-icone--warn" aria-hidden="true">&#9888;</span>
+              <h2 class="ps__erro-titulo">Vínculo do paciente em revisão</h2>
+              <p class="ps__erro-texto">
+                O vínculo deste paciente com o sistema de origem está em revisão. Os dados clínicos
+                ficam temporariamente indisponíveis até a conciliação do cadastro.
+              </p>
+            }
+            @case ('nao-encontrado') {
+              <span class="ps__erro-icone" aria-hidden="true">&#128269;</span>
+              <h2 class="ps__erro-titulo">Paciente não encontrado</h2>
+              <p class="ps__erro-texto">
+                Não localizamos este paciente no espelho do sistema de origem. Ele pode ter sido
+                removido na origem ou o endereço está incorreto.
+              </p>
+            }
+            @case ('sem-acesso') {
+              <span class="ps__erro-icone ps__erro-icone--danger" aria-hidden="true">&#128274;</span>
+              <h2 class="ps__erro-titulo">Sem acesso a este paciente</h2>
+              <p class="ps__erro-texto">
+                Você não tem permissão para visualizar o prontuário deste paciente na clínica dele.
+                Este acesso foi registrado (LGPD).
+              </p>
+            }
+            @default {
+              <span class="ps__erro-icone ps__erro-icone--danger" aria-hidden="true">&#9888;</span>
+              <h2 class="ps__erro-titulo">Não foi possível carregar o paciente</h2>
+              <p class="ps__erro-texto">
+                Ocorreu um erro ao consultar o sistema de origem. Tente novamente em instantes.
+              </p>
+            }
+          }
+          <div class="ps__erro-acoes">
+            @if (erro() !== 'sem-acesso' && erro() !== 'nao-encontrado') {
+              <button type="button" class="nx-btn" (click)="recarregar()">Tentar novamente</button>
+            }
+            <a class="nx-btn" routerLink="/prontuario" [queryParams]="paramsVoltarBusca"
+              >Voltar à busca</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else if (carregando()) {
+    <!-- Skeleton da janela (sem layout shift) -->
+    <div class="ps__janela">
+      <div class="nx-titlebar">Prontuário</div>
+      <div class="ps__paciente ps__paciente--skel">
+        <pr-skeleton-bloco [linhas]="1" altura="20px" largura="320px" />
+      </div>
+      <div class="ps__conteudo">
+        <pr-skeleton-bloco [linhas]="6" altura="14px" />
+      </div>
+    </div>
+  } @else {
+    <div class="ps__janela">
+      <!-- 1) Barra de titulo vinho: "Prontuário - {NOME} - {X} Anos {Y} Meses" -->
+      <div class="nx-titlebar ps__titlebar" role="heading" aria-level="1">
+        {{ tituloJanela() }}
+      </div>
+
+      @if (cabecalho(); as c) {
+        <!-- 2) Barra do paciente (sempre visivel) -->
+        <div class="ps__paciente" aria-label="Identificação do paciente">
+          <span class="nx-input ps__nome" [title]="c.nome || ''">{{ c.nome || '—' }}</span>
+
+          <span class="nx-input ps__codigo tabular" title="Código do paciente no espelho">
+            {{ codigoPaciente() }}
+          </span>
+
+          <span class="nx-field ps__campo">
+            <span class="nx-label">Sexo:</span>
+            <span class="nx-input nx-input--destaque ps__sexo">{{ sexoRotulo() || '—' }}</span>
+          </span>
+
+          <span class="nx-field ps__campo">
+            <span class="nx-label">Data Nascimento:</span>
+            <span class="nx-input tabular ps__nasc">
+              @if (c.dataNascimento) {
+                {{ c.dataNascimento | date: 'dd/MM/yyyy' }}
+              } @else {
+                —
+              }
+            </span>
+          </span>
+
+          <span
+            class="ps__leitura"
+            title="Prontuário espelho do sistema de origem — nenhuma edição é possível"
+          >
+            Somente leitura
+          </span>
+
+          <!-- Situação cadastral (óbito/transferência/etc.) — leitura, não bloqueia o fluxo. -->
+          @if (situacaoBadge(); as sb) {
+            <pr-badge-clinico
+              class="ps__situacao"
+              [tom]="sb.tom"
+              [texto]="sb.texto"
+              [titulo]="sb.titulo"
+            />
+          }
+
+          <!-- B3: alertas clínicos (alergias / diabetes) — como o NephroSys -->
+          @if (c.alergiasAtivas > 0) {
+            <pr-badge-clinico
+              class="ps__alerta"
+              tom="perigo"
+              icone="⚠"
+              [texto]="'Alergias (' + c.alergiasAtivas + ')'"
+              titulo="Paciente com alergias ativas — verifique antes de prescrever"
+            />
+          }
+          @if (c.indDiabetes) {
+            <pr-badge-clinico
+              class="ps__alerta"
+              tom="atencao"
+              texto="Diabetes"
+              titulo="Paciente diabético"
+            />
+          }
+
+          <span class="ps__direita">
+            <pr-sync-status
+              class="ps__sync"
+              [status]="statusSync()"
+              [dataUtc]="ultimaSyncUtc()"
+              origem="sistema de origem"
+            />
+            <button type="button" class="nx-btn ps__imprimir" (click)="abrirImpressao()">
+              🖨 Imprimir Prontuário
+            </button>
+            <a class="ps__voltar" routerLink="/prontuario" [queryParams]="paramsVoltarBusca"
+              >Voltar à busca</a
+            >
+          </span>
+        </div>
+      }
+
+      <!-- 3) Faixa de abas horizontais estilo desktop -->
+      <nav class="ps__abas" aria-label="Seções do prontuário">
+        <ul class="ps__abas-lista">
+          @for (aba of abas; track aba.rota) {
+            <li>
+              <a
+                class="ps__aba"
+                [routerLink]="aba.rota"
+                routerLinkActive="ps__aba--ativa"
+                [attr.aria-current]="null"
+              >
+                {{ aba.rotulo }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <div class="ps__conteudo">
+        <router-outlet />
+      </div>
+    </div>
+  }
+
+  <!-- Modal de impressão: seleção das abas -->
+  @if (mostrarImpressao()) {
+    <div class="ps__modal-overlay" (click)="fecharImpressao()">
+      <div class="ps__modal" role="dialog" aria-modal="true" aria-label="Imprimir prontuário" (click)="$event.stopPropagation()">
+        <div class="nx-titlebar">Imprimir Prontuário</div>
+        <div class="ps__modal-corpo">
+          <p class="ps__modal-ajuda">Selecione as seções que deseja imprimir:</p>
+          <div class="ps__modal-acoes-topo">
+            <button type="button" class="nx-btn" (click)="marcarTodas(true)">Marcar todas</button>
+            <button type="button" class="nx-btn" (click)="marcarTodas(false)">Desmarcar todas</button>
+          </div>
+          <ul class="ps__modal-lista">
+            @for (s of secoesImpressao; track s.chave) {
+              <li>
+                <label class="ps__modal-item">
+                  <input
+                    type="checkbox"
+                    [checked]="selecaoImpressao()[s.chave]"
+                    (change)="alternarSecao(s.chave)"
+                  />
+                  <span>{{ s.rotulo }}</span>
+                </label>
+              </li>
+            }
+          </ul>
+        </div>
+        <div class="ps__modal-rodape">
+          <button type="button" class="nx-btn" (click)="fecharImpressao()">Cancelar</button>
+          <button
+            type="button"
+            class="nx-btn ps__modal-ok"
+            (click)="confirmarImpressao()"
+            [disabled]="!algumaSelecionada()"
+          >
+            🖨 Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

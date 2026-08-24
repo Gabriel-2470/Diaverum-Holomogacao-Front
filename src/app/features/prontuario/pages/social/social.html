@@ -1,0 +1,112 @@
+@if (carregando()) {
+  <pr-skeleton [linhas]="8" altura="16px" />
+} @else if (erro()) {
+  <pr-estado-vazio icone="!" titulo="Não foi possível carregar" descricao="Erro ao consultar o sistema de origem." />
+} @else {
+  <section class="pagina-social prontuario-theme" aria-label="Social">
+    @if (semDados()) {
+      <div class="nx-aviso-origem">⚠ Este paciente não possui dados sociais no histórico migrado.</div>
+    }
+
+    <div class="nx-subtabs" aria-label="Sub-abas do social">
+      <button type="button" class="nx-subtab is-ativa">Estrutura social</button>
+      <button type="button" class="nx-subtab" disabled title="Indisponível nesta versão">Diagnóstico social</button>
+    </div>
+
+    <!-- Dados sociais (migrados do NephroSys) -->
+    <div class="nx-group">
+      <div class="nx-group-head">Dados sociais</div>
+      <div class="nx-pad">
+        <div class="nx-fields nx-fields--2">
+          <div class="nx-field"><span class="nx-label">Cor:</span><span class="nx-input">{{ val(social()?.cor) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Estado civil:</span><span class="nx-input">{{ val(social()?.estCivil) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Religião:</span><span class="nx-input">{{ val(social()?.religiao) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Escolaridade:</span><span class="nx-input">{{ val(social()?.grauInstru) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Profissão:</span><span class="nx-input">{{ val(social()?.profissao) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Moradia:</span><span class="nx-input">{{ val(social()?.moradia) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Tipo de moradia:</span><span class="nx-input">{{ val(social()?.tipoMoradia) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Saneamento:</span><span class="nx-input">{{ val(social()?.saneamento) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Renda:</span><span class="nx-input">{{ val(social()?.renda) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Classe social:</span><span class="nx-input">{{ val(social()?.classeSocial) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Benefícios:</span><span class="nx-input">{{ val(social()?.beneficios) }}</span></div>
+          <div class="nx-field"><span class="nx-label">CRAS:</span><span class="nx-input">{{ val(social()?.cras) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Unidade ref. saúde:</span><span class="nx-input">{{ val(social()?.unidadeRefSaude) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Transporte:</span><span class="nx-input">{{ val(social()?.transporte) }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hábitos -->
+    <div class="nx-group">
+      <div class="nx-group-head">Hábitos</div>
+      <div class="nx-pad">
+        <div class="nx-fields nx-fields--3">
+          <div class="nx-field"><span class="nx-label">Tabagismo:</span><span class="nx-input">{{ habito(habitos()?.tabagismo) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Etilismo:</span><span class="nx-input">{{ habito(habitos()?.etilismo) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Drogadição:</span><span class="nx-input">{{ habito(habitos()?.drogadicao) }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nutrição -->
+    <div class="nx-group">
+      <div class="nx-group-head">Nutrição</div>
+      <div class="nx-pad">
+        <div class="nx-fields nx-fields--2">
+          <div class="nx-field"><span class="nx-label">Apetite:</span><span class="nx-input">{{ val(nutricao()?.apetite) }}</span></div>
+          <div class="nx-field"><span class="nx-label">Restrição hídrica:</span><span class="nx-input">{{ val(nutricao()?.restrHidr) }}</span></div>
+          <div class="nx-field nx-field--wide"><span class="nx-label">Obs. apetite:</span><span class="nx-input nx-input--bloco">{{ val(nutricao()?.obsApetite) }}</span></div>
+          <div class="nx-field nx-field--wide"><span class="nx-label">Obs. nutrição:</span><span class="nx-input nx-input--bloco">{{ val(nutricao()?.obsNutri) }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observações -->
+    <div class="nx-group">
+      <div class="nx-group-head">Observações</div>
+      <div class="nx-pad">
+        <div class="nx-fields">
+          <div class="nx-field nx-field--wide"><span class="nx-label">Observações:</span><span class="nx-input nx-input--bloco">{{ val(extra()?.observacoes) }}</span></div>
+          <div class="nx-field nx-field--wide"><span class="nx-label">Pendência HD:</span><span class="nx-input nx-input--bloco">{{ val(extra()?.pendenciaHd) }}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Composição familiar (origem ainda não envia esta lista) -->
+    <div class="nx-group">
+      <div class="nx-group-head">Composição familiar</div>
+      <div class="nx-grid-wrap">
+        <table class="nx-grid">
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Parentesco</th>
+              <th scope="col">Idade</th>
+              <th scope="col">Ocupação</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="vazio-inline">Sem registros de composição familiar.</p>
+    </div>
+
+    <!-- Contatos (origem ainda não envia esta lista) -->
+    <div class="nx-group">
+      <div class="nx-group-head">Contatos</div>
+      <div class="nx-grid-wrap">
+        <table class="nx-grid">
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              <th scope="col">Vínculo</th>
+              <th scope="col">Telefone</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="vazio-inline">Sem contatos registrados.</p>
+    </div>
+  </section>
+}

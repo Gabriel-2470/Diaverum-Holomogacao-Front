@@ -1,0 +1,136 @@
+<section class="pagina-acessos prontuario-theme" aria-label="Acessos">
+  <div class="nx-aviso-origem">
+    ⚠ O histórico detalhado de acessos (localização, médico responsável e evolução do acesso) ainda não é enviado pelo
+    sistema de origem. As datas abaixo são derivadas das sessões de HD mais recentes.
+  </div>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Acesso Atual</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="4" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar os acessos"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else {
+    <div class="nx-group">
+      <div class="nx-group-head">Acesso Atual</div>
+      <div class="nx-pad">
+        <div class="nx-fields">
+          <div class="nx-field">
+            <span class="nx-label">Acesso Atual:</span>
+            <span class="nx-input nx-input--destaque valor-atual">{{ acessoAtual() || '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nx-group">
+      <div class="nx-group-head">Histórico de acessos (derivado das sessões)</div>
+      @if (linhas().length === 0) {
+        <div class="nx-pad">
+          <pr-estado-vazio
+            icone="—"
+            titulo="Sem acessos identificados"
+            descricao="Nenhuma sessão recente informa o tipo de acesso."
+          />
+        </div>
+      } @else {
+        <div class="nx-grid-wrap">
+          <table class="nx-grid">
+            <thead>
+              <tr>
+                <th scope="col">Ativo</th>
+                <th scope="col">Acesso</th>
+                <th scope="col">Primeiro uso</th>
+                <th scope="col">Último uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of linhas(); track l.tipo) {
+                <tr [class.is-sel]="l.ativo">
+                  <td>{{ l.ativo ? 'Sim' : '' }}</td>
+                  <td>{{ l.tipo }}</td>
+                  <td class="tabular">{{ l.primeiroUso ? (l.primeiroUso | date: 'dd/MM/yyyy') : '—' }}</td>
+                  <td class="tabular">{{ l.ultimoUso ? (l.ultimoUso | date: 'dd/MM/yyyy') : '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Acessos vasculares (cadastro) — rota aditiva da migração NephroSys -->
+  <div class="nx-group acessos-cad">
+    <div class="nx-group-head">Acessos vasculares (cadastro)</div>
+    <div class="nx-group-body">
+      @if (acessosVasculares().length === 0) {
+        <div class="nx-aviso-origem">⚠ Este paciente não possui acessos vasculares cadastrados no histórico migrado.</div>
+      } @else {
+        @for (a of acessosVasculares(); track a.idAcesso) {
+          <article class="acesso-card nx-group">
+            <header class="nx-group-head acesso-card__cab">
+              <strong>{{ a.tipoDescricao || a.categoria || 'Acesso' }}</strong>
+              @if (a.categoria && a.tipoDescricao) {
+                <span class="acesso-card__cat">{{ a.categoria }}</span>
+              }
+              <span
+                class="acesso-badge"
+                [class.acesso-badge--ativo]="a.ativo"
+                [class.acesso-badge--inativo]="!a.ativo"
+              >{{ a.ativo ? 'Ativo' : 'Inativo' }}</span>
+            </header>
+
+            <div class="nx-group-body">
+              <div class="nx-fields nx-fields--2">
+                <div class="nx-field"><span class="nx-label">Categoria:</span><span class="nx-input">{{ a.categoria || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Tipo:</span><span class="nx-input">{{ a.tipoDescricao || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Localização:</span><span class="nx-input">{{ a.localizacao || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Profissional:</span><span class="nx-input">{{ a.profissionalNome || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Confecção:</span><span class="nx-input tabular">{{ (a.dataConfeccao | date: 'dd/MM/yyyy') || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Perda:</span><span class="nx-input tabular">{{ (a.dataPerda | date: 'dd/MM/yyyy') || '—' }}</span></div>
+              </div>
+
+              @if (a.eventos && a.eventos.length > 0) {
+                <div class="acesso-card__eventos">
+                  <div class="acesso-card__eventos-tit">Eventos</div>
+                  <div class="nx-grid-wrap">
+                    <table class="nx-grid">
+                      <thead>
+                        <tr>
+                          <th scope="col">Data</th>
+                          <th scope="col">Evento</th>
+                          <th scope="col">Motivo</th>
+                          <th scope="col">Observação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (e of a.eventos; track e.idAcessoEvento) {
+                          <tr>
+                            <td class="tabular">{{ (e.dataEvento | date: 'dd/MM/yyyy') || '—' }}</td>
+                            <td>{{ e.eventoDescricao || '—' }}</td>
+                            <td>{{ e.motivoDescricao || '—' }}</td>
+                            <td>{{ e.observacao || '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              } @else {
+                <p class="vazio-inline">Sem eventos registrados.</p>
+              }
+            </div>
+          </article>
+        }
+      }
+    </div>
+  </div>
+</section>

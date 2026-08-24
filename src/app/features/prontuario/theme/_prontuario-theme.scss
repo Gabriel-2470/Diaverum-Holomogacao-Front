@@ -1,0 +1,399 @@
+// features/prontuario/theme/_prontuario-theme.scss
+//
+// Tema "NephroSys" da area de prontuario, ESCOPADO em .prontuario-theme.
+// Reproduz o visual do software desktop de nefrologia: fundo cinza claro,
+// tipografia pequena e densa (12px 'Segoe UI'/Tahoma), controles compactos
+// (~24px), bordas 1px cinza, barra de titulo vinho e selecao azul.
+//
+// Aplicado na raiz do ProntuarioLayout (class="prontuario-theme"). Todos os
+// componentes filhos herdam as CSS custom properties e as classes .nx-*.
+//
+// Compatibilidade: os tokens legados (--pr-primary, --pr-text-muted,
+// --pr-surface-alt, --pr-radius*, --pr-shadow*, --pr-focus-ring, --pr-warning,
+// --pr-accent) e as classes .pr-* (surface/btn/badge/table/empty/skeleton)
+// continuam definidos — remapeados para a paleta NephroSys — para que os
+// componentes/paginas existentes nao quebrem.
+
+// ---- Mixins reutilizados por .nx-* e pelos aliases .pr-* ----
+
+@mixin nx-botao-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--pr-text);
+  background: linear-gradient(#f8f8f8, #e3e3e3);
+  border: 1px solid #9d9d9d;
+  border-radius: 2px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  white-space: nowrap;
+
+  &:hover {
+    background: linear-gradient(#ffffff, #ececec);
+  }
+
+  &:active {
+    background: #dcdcdc;
+  }
+
+  &:focus-visible {
+    outline: 1px dotted var(--pr-text);
+    outline-offset: -3px;
+  }
+
+  &[disabled],
+  &.desabilitado {
+    color: var(--pr-muted);
+    background: var(--pr-tab-bg);
+    cursor: default;
+  }
+}
+
+@mixin nx-grid-densa {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--pr-white);
+  border: 1px solid var(--pr-border);
+  font-size: 12px;
+
+  thead th {
+    height: 24px;
+    padding: 2px 8px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--pr-text);
+    background: linear-gradient(#f6f6f6, #e2e2e2);
+    border: 1px solid var(--pr-border-soft);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    height: 26px;
+    padding: 2px 8px;
+    border: 1px solid var(--pr-border-soft);
+    vertical-align: middle;
+  }
+
+  // Zebra sutil.
+  tbody tr:nth-child(even) td {
+    background: #f3f3f3;
+  }
+
+  tbody tr:hover td {
+    background: #e6eefb;
+  }
+
+  // Linha SELECIONADA: azul com texto branco (clique mostra detalhe).
+  tbody tr.nx-grid__sel td,
+  tbody tr[aria-selected='true'] td {
+    background: var(--pr-sel);
+    color: var(--pr-sel-text);
+  }
+}
+
+.prontuario-theme {
+  // ---- Tokens NephroSys MODERNIZADO (paleta limpa, clínica) ----
+  --pr-bg: #eef1f6;          // fundo da janela (cinza-azulado claro)
+  --pr-surface: #ffffff;
+  --pr-white: #ffffff;
+  --pr-border: #cdd4de;      // borda de controles
+  --pr-border-soft: #e3e7ee; // divisórias/cards
+  --pr-input-bg: #ffffff;
+  --pr-input-border: #d7dce4;
+  --pr-titlebar: #7d1a16;    // vinho NephroSys (levemente refinado)
+  --pr-titlebar-text: #ffffff;
+  --pr-tab-bg: #eef1f6;
+  --pr-tab-active: #ffffff;
+  --pr-group-head: #f6f8fb;
+  --pr-text: #1f2937;        // texto forte
+  --pr-muted: #6b7280;       // labels/secundário
+  --pr-primary: #2563a8;     // acento (azul clínico)
+  --pr-sel: #2563a8;
+  --pr-sel-text: #ffffff;
+  --pr-highlight: #fff7d6;   // destaque suave (sexo)
+  --pr-danger: #c0392b;
+  --pr-ok: #2e7d32;
+  --pr-warn: #b26a00;
+  --pr-neg: #fde2e1;
+  --pr-pos: #dcf2e0;
+
+  // ---- Aliases de compatibilidade (tokens legados usados pelas paginas
+  //      e componentes ja existentes; remapeados para a paleta NephroSys) ----
+  --pr-primary: var(--pr-sel);
+  --pr-primary-strong: #245da8;
+  --pr-primary-hover: rgba(47, 111, 208, 0.08);
+  --pr-accent: var(--pr-ok);
+  --pr-text-muted: var(--pr-muted);
+  --pr-surface-alt: #efefef;
+  --pr-warning: var(--pr-warn);
+  --pr-radius: 0px;
+  --pr-radius-sm: 0px;
+  --pr-shadow: none;
+  --pr-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.18);
+  --pr-focus-ring: 0 0 0 2px rgba(47, 111, 208, 0.4);
+
+  // ---- Base (densidade desktop) ----
+  color: var(--pr-text);
+  background: var(--pr-bg);
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 12px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums; // numeros alinhados (datas, doses, exames)
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  // =====================================================================
+  // Classes utilitarias NephroSys (.nx-*) — usadas pelas paginas/abas.
+  // =====================================================================
+
+  // Barra de titulo vinho (janela). Usada pelo layout e pelo paciente-shell.
+  .nx-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+    padding: 3px 8px;
+    background: var(--pr-titlebar);
+    color: var(--pr-titlebar-text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    user-select: none;
+  }
+
+  // Group-box: moldura 1px + tira de titulo cinza claro em negrito.
+  .nx-group {
+    background: var(--pr-surface);
+    border: 1px solid var(--pr-border);
+    margin-bottom: 8px;
+  }
+
+  .nx-group-head {
+    padding: 3px 8px;
+    background: var(--pr-group-head);
+    border-bottom: 1px solid var(--pr-border-soft);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pr-text);
+  }
+
+  .nx-group-body {
+    padding: 8px;
+  }
+
+  // Par label:valor — label a direita, cinza; valor em caixinha .nx-input.
+  .nx-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 3px 0;
+    min-height: 22px;
+
+    > label,
+    > .nx-label {
+      min-width: 110px;
+      text-align: right;
+      color: var(--pr-muted);
+      white-space: nowrap;
+    }
+  }
+
+  // Caixinha com aparencia de input readonly (fundo branco, borda 1px).
+  // Valor ausente = "—" (responsabilidade da pagina; nunca inventar valor).
+  .nx-input {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 1px 6px;
+    box-sizing: border-box;
+    background: var(--pr-white);
+    border: 1px solid var(--pr-border);
+    color: var(--pr-text);
+    font-size: 12px;
+
+    // Campo em DESTAQUE (fundo amarelo claro), ex.: "Sexo:" na barra do paciente.
+    &--destaque {
+      background: var(--pr-highlight);
+    }
+
+    // Ocupa a largura toda (campos longos: endereco, observacao...).
+    &--bloco {
+      display: flex;
+      width: 100%;
+    }
+
+    // Texto corrido de varias linhas (evolucoes, laudos).
+    &--multilinha {
+      align-items: flex-start;
+      min-height: 48px;
+      white-space: pre-wrap;
+    }
+  }
+
+  // Grid denso: cabecalho cinza, linhas ~26px, zebra sutil, selecao azul.
+  .nx-grid {
+    @include nx-grid-densa;
+  }
+
+  // Sub-abas menores (dentro de uma aba, estilo desktop).
+  .nx-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px 4px 0;
+    background: var(--pr-bg);
+    border-bottom: 1px solid var(--pr-border);
+
+    .nx-subtab {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      margin-bottom: -1px;
+      padding: 0 8px;
+      font: inherit;
+      font-size: 11px;
+      color: var(--pr-text);
+      background: var(--pr-tab-bg);
+      border: 1px solid var(--pr-border);
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+
+      &:focus-visible {
+        outline: 1px dotted var(--pr-text);
+        outline-offset: -3px;
+      }
+
+      &--ativa,
+      &.ativa {
+        background: var(--pr-tab-active);
+        border-bottom-color: var(--pr-tab-active);
+        font-weight: 700;
+        z-index: 1;
+      }
+    }
+  }
+
+  // Faixa fina discreta: "⚠ O sistema de origem ainda não envia estes dados."
+  .nx-aviso-origem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #6b5300;
+    background: #fdf3cd;
+    border: 1px solid #e5d48a;
+  }
+
+  // Botao cinza compacto (~24px) estilo desktop. Somente acoes de LEITURA.
+  .nx-btn {
+    @include nx-botao-base;
+  }
+
+  // =====================================================================
+  // Compat: classes .pr-* consumidas pelas paginas/componentes existentes
+  // (busca, resumo, linha do tempo, estado-vazio...), reestilizadas para o
+  // visual denso NephroSys. NAO usar em paginas novas — preferir .nx-*.
+  // =====================================================================
+
+  .pr-surface {
+    background: var(--pr-white);
+    border: 1px solid var(--pr-border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .pr-muted {
+    color: var(--pr-muted);
+  }
+
+  .pr-btn {
+    @include nx-botao-base;
+
+    &.pr-btn-primary {
+      font-weight: 700;
+      border-color: #6f6f6f;
+    }
+  }
+
+  .pr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    border: 1px solid transparent;
+
+    &.pr-badge-ok {
+      background: var(--pr-pos);
+      color: var(--pr-ok);
+      border-color: #9fc9a3;
+    }
+
+    &.pr-badge-atencao {
+      background: var(--pr-highlight);
+      color: var(--pr-warn);
+      border-color: #ddc46a;
+    }
+
+    &.pr-badge-critico {
+      background: var(--pr-neg);
+      color: var(--pr-danger);
+      border-color: #e3a1a1;
+    }
+  }
+
+  .pr-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #e0e0e0;
+    border-radius: 2px;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+      animation: pr-skeleton-shimmer 1.3s infinite;
+    }
+  }
+
+  @keyframes pr-skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .pr-empty {
+    text-align: center;
+    color: var(--pr-muted);
+    padding: 24px 12px;
+    font-size: 12px;
+  }
+
+  .pr-table {
+    @include nx-grid-densa;
+  }
+}

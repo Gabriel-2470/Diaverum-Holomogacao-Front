@@ -1,0 +1,130 @@
+@use '../nx';
+@use '../nx-escrita';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.dc {
+  // &__gerais agora é um .nx-fields (grid alinhado) — sem grid próprio.
+
+  &__alerta {
+    color: var(--pr-danger);
+    font-weight: 600;
+  }
+
+  // -------------------------------------------------------------------------
+  // Escrita nativa de alergias (Etapa 2)
+  // -------------------------------------------------------------------------
+  &__escrita-barra {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    flex-wrap: wrap;
+  }
+
+  &__escrita-sep {
+    flex: 1 1 auto;
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: var(--pr-primary, #2563a8);
+    }
+  }
+
+  &__form {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 10px;
+    background: var(--pr-group-head, #f6f8fb);
+  }
+
+  &__registro {
+    margin: 0 0 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__registro-meta {
+    font-weight: 500;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  &__registro-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--pr-border-soft, #eef1f5);
+  }
+
+  &__marcadores {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  &__marcador {
+    border: 1px solid var(--pr-border-soft);
+    padding: 3px 6px;
+
+    legend {
+      font-weight: 700;
+      padding: 0 4px;
+    }
+  }
+
+  &__marcador-res {
+    margin-left: 6px;
+    font-weight: 700;
+    color: var(--pr-primary, #2563a8);
+  }
+
+  &__marcador-obs {
+    margin: 4px 0 2px;
+    font-size: 11px;
+    color: var(--pr-muted, #6b7280);
+    font-style: italic;
+  }
+
+  &__opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-right: 8px;
+    color: var(--pr-muted);
+
+    &--sel {
+      background: var(--pr-neg);
+      color: var(--pr-text);
+      padding: 0 3px;
+      border-radius: 2px;
+    }
+  }
+
+  &__critico {
+    color: var(--pr-danger);
+    font-weight: 700;
+  }
+
+  &__vazio {
+    text-align: center;
+    color: var(--pr-muted);
+    font-style: italic;
+  }
+}

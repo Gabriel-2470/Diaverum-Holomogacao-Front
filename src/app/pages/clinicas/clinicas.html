@@ -1,0 +1,109 @@
+<div class="clinicas-page">
+  <header class="page-header">
+    <div>
+      <h2>Clínicas</h2>
+      <p class="subtitulo">
+        Configure, por clínica, os <b>laboratórios</b> de destino dos exames (um deles é o
+        <b>padrão</b>) e o <b>médico solicitante padrão</b>.
+      </p>
+    </div>
+  </header>
+
+  @if (!ehAdmin) {
+    <div class="alert alert-info">Você está em modo leitura — apenas administradores alteram a configuração das clínicas.</div>
+  }
+  @if (erro) {
+    <div class="alert alert-erro">{{ erro }}</div>
+  }
+
+  <div class="card">
+    @if (carregando) {
+      <p class="estado">Carregando clínicas...</p>
+    } @else if (clinicas.length === 0) {
+      <p class="estado">Nenhuma clínica encontrada.</p>
+    } @else {
+      <div class="tabela-wrap">
+        <table class="tabela">
+          <thead>
+            <tr>
+              <th>Clínica</th>
+              <th>CNES</th>
+              <th class="col-labs">Laboratórios</th>
+              <th>Médico padrão</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of clinicas; track c.idUnidade) {
+              <tr [class.sem-lab]="c.laboratorios.length === 0">
+                <td class="col-nome">{{ c.descricao }}</td>
+                <td>{{ c.cnes || '—' }}</td>
+                <td class="col-labs">
+                  @if (c.laboratorios.length === 0) {
+                    <span class="vazio">Nenhum laboratório vinculado</span>
+                  } @else {
+                    <ul class="labs">
+                      @for (l of c.laboratorios; track l.idLaboratorio) {
+                        <li class="lab-chip" [class.padrao]="l.indPadrao">
+                          <span class="lab-nome">{{ l.nomeLab }}</span>
+                          <span
+                            class="badge"
+                            [class.badge-fhir]="l.tipoIntegracao === 'FHIR_HYGIA'"
+                            [class.badge-soap]="l.tipoIntegracao === 'SOAP_DB'"
+                            [title]="rotuloIntegracao(l.tipoIntegracao)"
+                          >
+                            {{ rotuloIntegracao(l.tipoIntegracao) }}
+                          </span>
+                          @if (l.indPadrao) {
+                            <span class="tag-padrao" title="Laboratório de destino padrão">★ padrão</span>
+                          } @else if (ehAdmin) {
+                            <button type="button" class="link-btn" (click)="definirPadrao(c, l.idLaboratorio)" [disabled]="salvando">
+                              definir padrão
+                            </button>
+                          }
+                          @if (ehAdmin) {
+                            <button type="button" class="rem-btn" title="Desvincular" (click)="removerLaboratorio(c, l.idLaboratorio)" [disabled]="salvando">×</button>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+
+                  @if (ehAdmin && labsDisponiveis(c).length > 0) {
+                    <div class="add-lab">
+                      <select [(ngModel)]="novoLabPorClinica[c.idUnidade]" [disabled]="salvando">
+                        <option [ngValue]="null">+ adicionar laboratório…</option>
+                        @for (l of labsDisponiveis(c); track l.id) {
+                          <option [ngValue]="l.id">{{ l.nome }}</option>
+                        }
+                      </select>
+                      <button
+                        type="button"
+                        class="btn-add"
+                        (click)="adicionarLaboratorio(c)"
+                        [disabled]="salvando || !novoLabPorClinica[c.idUnidade]"
+                      >
+                        Adicionar
+                      </button>
+                    </div>
+                  }
+                </td>
+                <td>
+                  <select
+                    [ngModel]="c.idMedicoPadrao"
+                    (ngModelChange)="onMudarMedicoPadrao(c, $event)"
+                    [disabled]="!ehAdmin"
+                  >
+                    <option [ngValue]="null">— sem padrão —</option>
+                    @for (m of medicos; track m.iD_MEDICO) {
+                      <option [ngValue]="m.iD_MEDICO">{{ m.nome }}</option>
+                    }
+                  </select>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>

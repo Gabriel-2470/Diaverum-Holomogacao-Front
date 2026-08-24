@@ -1,0 +1,28 @@
+@use '../nx';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.img {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+
+  &__campos {
+    margin: 0;
+  }
+
+  &__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: var(--pr-group-head, #f6f8fb);
+    border: 1px dashed var(--pr-border-soft, #d7dce4);
+    border-radius: 8px;
+    color: var(--pr-muted, #6b7280);
+    font-style: italic;
+  }
+}

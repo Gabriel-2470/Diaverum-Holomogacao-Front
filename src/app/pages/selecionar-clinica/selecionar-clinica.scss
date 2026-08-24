@@ -1,0 +1,135 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffebe1;
+  padding: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 460px;
+  overflow: hidden;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-header {
+  padding: 2rem 2rem 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid #f3f4f6;
+
+  svg {
+    margin-bottom: 1rem;
+    color: #e86825;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    color: #718096;
+    font-size: 0.9rem;
+    margin: 0;
+
+    strong {
+      color: #2d3748;
+    }
+  }
+}
+
+.clinicas-lista {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.clinica-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+
+  &:hover {
+    border-color: #e86825;
+    background: #ffebe1;
+    transform: translateX(2px);
+    box-shadow: 0 4px 12px rgba(232, 104, 37, 0.15);
+
+    .clinica-icon {
+      color: #e86825;
+      background: #ffebe1;
+    }
+
+    .seta {
+      color: #e86825;
+    }
+  }
+
+  .clinica-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .clinica-nome {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #1a202c;
+  }
+
+  .seta {
+    color: #d1d5db;
+    flex-shrink: 0;
+    transition: color 0.2s;
+  }
+}
+
+.card-footer {
+  padding: 1rem 2rem 1.5rem;
+  text-align: center;
+}
+
+.btn-sair {
+  background: none;
+  border: none;
+  color: #a0aec0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #e86825;
+  }
+}

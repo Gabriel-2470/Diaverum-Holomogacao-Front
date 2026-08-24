@@ -1,0 +1,174 @@
+@if (carregando()) {
+  <pr-skeleton [linhas]="6" altura="16px" />
+} @else if (erro()) {
+  <pr-estado-vazio icone="!" titulo="Não foi possível carregar" descricao="Erro ao consultar o sistema de origem." />
+} @else {
+  <!-- ESCRITA nativa (Etapa 5) — só logado com papel de escrita -->
+  @if (podeEscrever()) {
+    <div class="lau__escrita nao-imprime">
+      <div class="lau__escrita-barra">
+        <label class="lau__check">
+          <input type="checkbox" [checked]="verCanceladas()" (change)="alternarCanceladas()" />
+          <span>Ver canceladas</span>
+        </label>
+        <span class="lau__escrita-sep"></span>
+        @if (!novoAberto()) {
+          <button type="button" class="nx-btn nx-btn--primary nx-btn--sm" (click)="abrirNovo()">+ Enviar documento</button>
+        }
+      </div>
+
+      <!-- Form: novo documento (arquivo + metadados) -->
+      @if (novoAberto()) {
+        <section class="nx-form lau__form">
+          <div class="nx-form-body">
+            <label class="nx-campo nx-campo--full">
+              <span class="nx-campo-lbl">Arquivo <em>(obrigatório — PDF, PNG ou JPG)</em></span>
+              <input type="file" [accept]="accept" (change)="onArquivo($event)" [disabled]="salvando()" />
+            </label>
+            @if (arquivoSelecionado(); as arq) {
+              <p class="lau__arquivo-info">Selecionado: <b>{{ arq.name }}</b> ({{ tamanhoKb(arq.size) }})</p>
+            }
+            <label class="nx-campo">
+              <span class="nx-campo-lbl">Tipo</span>
+              <select [(ngModel)]="novoTipo" [disabled]="salvando()">
+                @for (t of tipoOpcoes; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </label>
+            <label class="nx-campo">
+              <span class="nx-campo-lbl">Data do documento <em>(opcional)</em></span>
+              <input type="date" [(ngModel)]="novoData" [disabled]="salvando()" />
+            </label>
+            <label class="nx-campo nx-campo--full">
+              <span class="nx-campo-lbl">
+                Título
+                <span class="nx-contador" [class.nx-contador--ok]="tituloValido">
+                  {{ novoTitulo.trim().length }} / mín. {{ TITULO_MIN }}
+                </span>
+              </span>
+              <input type="text" [(ngModel)]="novoTitulo" [disabled]="salvando()" placeholder="Ex.: Laudo de raio-x de tórax" />
+            </label>
+
+            @if (erroSalvar()) {
+              <p class="nx-erro" role="alert">{{ erroSalvar() }}</p>
+            }
+
+            <div class="nx-form-acoes">
+              <button type="button" class="nx-btn nx-btn--primary" (click)="salvarNovo()" [disabled]="!novoValido || salvando()">
+                @if (salvando()) { <span class="nx-spinner" aria-hidden="true"></span> Enviando… } @else { Enviar documento }
+              </button>
+              <button type="button" class="nx-btn" (click)="cancelarNovo()" [disabled]="salvando()">Cancelar</button>
+            </div>
+          </div>
+        </section>
+      }
+    </div>
+  }
+
+  @if (documentos().length === 0) {
+    <pr-estado-vazio icone="&#128196;" titulo="Nenhum laudo/documento" descricao="A origem não enviou documentos para este paciente." />
+  } @else {
+    <div class="lau">
+      <section class="nx-group lau__lista">
+        <div class="nx-group-head">Laudos / Documentos</div>
+        <table class="nx-grid">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Título</th>
+              @if (podeEscrever()) { <th>Origem</th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of documentos(); track d.idDocumento) {
+              <tr
+                [class.nx-grid__sel]="d.idDocumento === idSelecionado()"
+                [class.nx-registro--cancelado]="d.cancelado"
+                [attr.aria-selected]="d.idDocumento === idSelecionado()"
+                (click)="selecionar(d)"
+              >
+                <td class="tabular">{{ (d.dataDocumento | date: 'dd/MM/yyyy') || '—' }}</td>
+                <td>{{ d.tipo || '—' }}</td>
+                <td>{{ d.titulo || '—' }}</td>
+                @if (podeEscrever()) {
+                  <td>
+                    @if (d.ehNativa) {
+                      <span class="nx-chip nx-chip--nativa">Registrada aqui</span>
+                    } @else {
+                      <span class="nx-chip nx-chip--origem">Sistema de origem</span>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <section class="nx-group lau__detalhe">
+        <div class="nx-group-head">Detalhe</div>
+        @if (selecionado(); as d) {
+          @if (d.cancelado) {
+            <div class="nx-tarja">CANCELADO — {{ d.motivoCancelamento || 'sem motivo informado' }}</div>
+          }
+          <div class="nx-group-body" [class.nx-registro--cancelado]="d.cancelado">
+            <div class="nx-registro-conteudo">
+              <div class="nx-fields">
+                <div class="nx-field"><span class="nx-label">Data:</span><span class="nx-input tabular">{{ (d.dataDocumento | date: 'dd/MM/yyyy') || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Tipo:</span><span class="nx-input">{{ d.tipo || '—' }}</span></div>
+                <div class="nx-field nx-field--wide"><span class="nx-label">Título:</span><span class="nx-input nx-input--bloco">{{ d.titulo || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Formato:</span><span class="nx-input">{{ d.mimeType || '—' }}</span></div>
+                <div class="nx-field"><span class="nx-label">Tamanho:</span><span class="nx-input tabular">{{ tamanhoKb(d.tamanhoBytes) }}</span></div>
+                @if (podeEscrever()) {
+                  <div class="nx-field">
+                    <span class="nx-label">Origem:</span>
+                    <span class="nx-input">
+                      @if (d.ehNativa) {
+                        <span class="nx-chip nx-chip--nativa">Registrada aqui</span>
+                      } @else {
+                        <span class="nx-chip nx-chip--origem">Sistema de origem</span>
+                      }
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+            @if (!d.cancelado) {
+              <div class="lau__acoes">
+                <a class="nx-btn" [href]="urlDownload(d)" target="_blank" rel="noopener">⬇ Baixar</a>
+              </div>
+            }
+          </div>
+
+          <!-- Ação de escrita (nativa, não cancelada) -->
+          @if (podeAgir(d)) {
+            <div class="lau__acao nao-imprime">
+              @if (!acaoAberta(d)) {
+                <button type="button" class="nx-btn nx-btn--sm nx-btn--danger" (click)="abrirCancelar(d)">Cancelar</button>
+              } @else {
+                <div class="nx-acao-form">
+                  <label class="nx-campo nx-campo--full">
+                    <span class="nx-campo-lbl">Motivo do cancelamento <em>(obrigatório, mín. {{ MOTIVO_MIN }})</em></span>
+                    <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está cancelando?" />
+                  </label>
+                  @if (erroAcao()) { <p class="nx-erro" role="alert">{{ erroAcao() }}</p> }
+                  <div class="nx-form-acoes">
+                    <button type="button" class="nx-btn nx-btn--danger nx-btn--sm" (click)="confirmarCancelar(d)"
+                      [disabled]="!acaoMotivoValido || processandoAcao()">
+                      @if (processandoAcao()) { <span class="nx-spinner" aria-hidden="true"></span> Processando… } @else { Confirmar cancelamento }
+                    </button>
+                    <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <div class="nx-group-body">
+            <p class="lau__nada">Selecione um documento.</p>
+          </div>
+        }
+      </section>
+    </div>
+  }
+}

@@ -1,0 +1,34 @@
+<div class="tl-item" [class.tl-item--expansivel]="temDetalhe">
+  <div class="tl-item__marcador">
+    <span class="tl-item__icone" [style.background]="estilo().cor" aria-hidden="true">{{ estilo().icone }}</span>
+    <span class="tl-item__linha-tempo" aria-hidden="true"></span>
+  </div>
+
+  <div class="tl-item__corpo">
+    <button
+      type="button"
+      class="tl-item__cabecalho"
+      [attr.aria-expanded]="temDetalhe ? expandido() : null"
+      [disabled]="!temDetalhe"
+      (click)="alternar()"
+    >
+      <span class="tl-item__meta">
+        <span class="tl-item__tag" [style.color]="estilo().cor">{{ estilo().rotulo }}</span>
+        @if (hora) {
+          <span class="tl-item__hora tabular">{{ hora }}</span>
+        }
+      </span>
+      <span class="tl-item__titulo">{{ evento.titulo || estilo().rotulo }}</span>
+      @if (evento.autor) {
+        <span class="tl-item__autor">{{ evento.autor }}</span>
+      }
+      @if (temDetalhe) {
+        <span class="tl-item__chevron" [class.tl-item__chevron--aberto]="expandido()" aria-hidden="true">v</span>
+      }
+    </button>
+
+    @if (temDetalhe && expandido()) {
+      <div class="tl-item__detalhe">{{ evento.resumo }}</div>
+    }
+  </div>
+</div>

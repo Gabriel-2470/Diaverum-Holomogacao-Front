@@ -1,0 +1,52 @@
+@if (temDados()) {
+  <div class="mini-chart" (mouseleave)="hoverSair()">
+    <svg
+      class="mini-chart__svg"
+      [attr.viewBox]="'0 0 ' + largura + ' ' + alturaViewBox"
+      preserveAspectRatio="none"
+      role="img"
+      [attr.aria-label]="descricaoAcessivel()"
+    >
+      @for (sr of seriesRender(); track sr.nome; let si = $index) {
+        <path class="mini-chart__linha" [attr.d]="sr.linha" [attr.stroke]="sr.cor" fill="none" />
+        @for (pr of sr.pontos; track pr.cx + '-' + pr.cy; let pi = $index) {
+          <circle
+            class="mini-chart__ponto"
+            [class.mini-chart__ponto--ultimo]="pr.ultimo"
+            [class.mini-chart__ponto--hover]="hoverAtivo(si, pi)"
+            [attr.cx]="pr.cx"
+            [attr.cy]="pr.cy"
+            [attr.r]="pr.ultimo ? 3.2 : 2"
+            [attr.fill]="sr.cor"
+          />
+          <!-- alvo de hover ampliado (transparente) para facilitar o toque/mouse -->
+          <circle
+            class="mini-chart__alvo"
+            [attr.cx]="pr.cx"
+            [attr.cy]="pr.cy"
+            r="7"
+            (mouseenter)="hoverEm(si, pi)"
+          >
+            <title>{{ tooltipTexto(sr, pr) }}</title>
+          </circle>
+        }
+      }
+    </svg>
+
+    <div class="mini-chart__legenda">
+      @for (sr of seriesRender(); track sr.nome) {
+        <span class="mini-chart__item">
+          <span class="mini-chart__cor" [style.background]="sr.cor"></span>
+          {{ sr.nome }}
+          @if (sr.pontos.length) {
+            <b class="mini-chart__ultimo tabular"
+              >{{ sr.pontos[sr.pontos.length - 1].ponto.y }}{{ sr.unidade }}</b
+            >
+          }
+        </span>
+      }
+    </div>
+  </div>
+} @else {
+  <p class="mini-chart__vazio">Sem dados para o grafico.</p>
+}

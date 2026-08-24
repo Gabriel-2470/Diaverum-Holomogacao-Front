@@ -1,0 +1,74 @@
+@if (carregando()) {
+  <pr-skeleton [linhas]="8" altura="16px" />
+} @else if (erro()) {
+  <pr-estado-vazio icone="!" titulo="Não foi possível carregar" descricao="Erro ao consultar o sistema de origem." />
+} @else if (cadastro(); as c) {
+  <!-- Dados Cadastrais -->
+  <section class="nx-group">
+    <div class="nx-group-head">Dados Cadastrais</div>
+    <div class="nx-group-body ident__cad">
+      <div class="ident__foto" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="52" height="52"><path fill="#b9b9b9" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>
+      </div>
+      <div class="ident__campos nx-fields nx-fields--2">
+        <div class="nx-field"><span class="nx-label">CPF:</span><span class="nx-input tabular">{{ c.cpf || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">CNS:</span><span class="nx-input tabular">{{ c.cns || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Nascimento:</span><span class="nx-input tabular">{{ (c.dataNascimento | date: 'dd/MM/yyyy') || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Sexo:</span><span class="nx-input">{{ c.genero || '—' }}</span></div>
+        <div class="nx-field nx-field--wide"><span class="nx-label">Rua:</span><span class="nx-input nx-input--bloco">{{ endereco().rua }}</span></div>
+        <div class="nx-field"><span class="nx-label">Bairro:</span><span class="nx-input">{{ endereco().bairro }}</span></div>
+        <div class="nx-field"><span class="nx-label">Cidade:</span><span class="nx-input">{{ endereco().cidade }}</span></div>
+        <div class="nx-field"><span class="nx-label">CEP:</span><span class="nx-input tabular">{{ endereco().cep }}</span></div>
+        <div class="nx-field"><span class="nx-label">Telefone:</span><span class="nx-input tabular">{{ c.telefone || '—' }}</span></div>
+        <div class="nx-field nx-field--wide"><span class="nx-label">Email:</span><span class="nx-input nx-input--bloco">{{ c.email || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Cor:</span><span class="nx-input">—</span></div>
+        <div class="nx-field"><span class="nx-label">Mãe:</span><span class="nx-input">{{ c.nomeMae || '—' }}</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Convênio / Plano de Saúde (preenchido do espelho migrado quando disponível) -->
+  <section class="nx-group">
+    <div class="nx-group-head">Convênio / Plano de Saúde</div>
+    <div class="nx-group-body">
+      @if (!temConvenio()) {
+        <div class="nx-aviso-origem">⚠ Este paciente não possui convênio/plano informado no histórico migrado.</div>
+      }
+      <div class="ident__campos nx-fields nx-fields--2">
+        <div class="nx-field"><span class="nx-label">Convênio:</span><span class="nx-input">{{ extra()?.convenio || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Plano:</span><span class="nx-input">{{ extra()?.plano || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Matrícula:</span><span class="nx-input">—</span></div>
+        <div class="nx-field"><span class="nx-label">Validade:</span><span class="nx-input">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Programas de Tratamento -->
+  <section class="nx-group">
+    <div class="nx-group-head">Programas de Tratamento</div>
+    <div class="nx-group-body">
+      <div class="nx-fields">
+        <div class="nx-field">
+          <span class="nx-label">Programa de Tratamento Atual:</span>
+          <span class="nx-input ident__modalidade">{{ c.modalidadeTratamento || '—' }}</span>
+        </div>
+        <div class="nx-field"><span class="nx-label">Clínica:</span><span class="nx-input">{{ c.nomeClinica || '—' }}</span></div>
+        <div class="nx-field"><span class="nx-label">Início Diálise na Clínica:</span><span class="nx-input tabular">—</span></div>
+      </div>
+
+      @if (divergencias().length > 0) {
+        <div class="ident__diverg">
+          <div class="nx-group-head">Divergências com o cadastro local</div>
+          <table class="nx-grid">
+            <thead><tr><th>Campo</th><th>Espelho (origem)</th><th>Local</th></tr></thead>
+            <tbody>
+              @for (d of divergencias(); track d.campo) {
+                <tr><td>{{ d.campo }}</td><td>{{ d.espelho || '—' }}</td><td>{{ d.local || '—' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </section>
+}

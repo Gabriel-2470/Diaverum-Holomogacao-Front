@@ -1,0 +1,337 @@
+// features/prontuario/pages/_nx.scss
+//
+// Sistema visual das abas do prontuario — "jeitao NephroSys" MODERNIZADO:
+// cards limpos, campos alinhados (label + valor em colunas), inputs read-only
+// consistentes, grids densos com hover/selecao. Emitido no escopo de cada
+// componente que fizer `@use '../nx';`. Os tokens (--pr-*) vem do tema
+// (.prontuario-theme) e sao herdados por cascata (custom properties).
+
+// ---------------------------------------------------------------------------
+// Sub-abas (dentro de uma aba) — pill discreta
+// ---------------------------------------------------------------------------
+.nx-subtabs {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--pr-border-soft, #e3e7ee);
+  padding-bottom: 0;
+}
+
+.nx-subtab {
+  font: 600 12px/1 'Segoe UI', Tahoma, sans-serif;
+  padding: 7px 14px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--pr-muted, #6b7280);
+  cursor: default;
+
+  &.is-ativa,
+  &.nx-subtab--ativa,
+  &.ativa {
+    color: var(--pr-primary, #2563a8);
+    border-bottom-color: var(--pr-primary, #2563a8);
+    font-weight: 700;
+  }
+
+  &:disabled,
+  &.desabilitado {
+    color: var(--pr-muted, #9aa3b2);
+    opacity: 0.7;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Group-box -> card moderno
+// ---------------------------------------------------------------------------
+.nx-group {
+  border: 1px solid var(--pr-border-soft, #e3e7ee);
+  background: var(--pr-white, #fff);
+  border-radius: 10px;
+  margin: 0 0 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.nx-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--pr-group-head, #f6f8fb);
+  border-bottom: 1px solid var(--pr-border-soft, #e9edf3);
+  color: var(--pr-text, #1f2937);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 9px 14px;
+}
+
+// Barrinha de destaque à esquerda do titulo do card.
+.nx-group-head::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--pr-primary, #2563a8);
+}
+
+.nx-group-body,
+.nx-pad {
+  padding: 14px;
+}
+
+// ---------------------------------------------------------------------------
+// Campos: label + valor alinhados em colunas
+// ---------------------------------------------------------------------------
+// Container que ALINHA os campos (label numa coluna consistente). Use
+// .nx-fields (1 par por linha) ou .nx-fields--2 / --3 (2/3 pares por linha).
+.nx-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 11px 14px;
+}
+
+.nx-fields--2 {
+  grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+  gap: 11px 22px;
+}
+
+.nx-fields--3 {
+  grid-template-columns: repeat(3, max-content minmax(0, 1fr));
+  gap: 11px 20px;
+}
+
+// Colapsa para 1 par por linha em telas estreitas (evita valor espremido).
+@media (max-width: 780px) {
+  .nx-fields--2,
+  .nx-fields--3 {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+}
+
+// Dentro de um .nx-fields, cada .nx-field vira "transparente" e seus dois
+// filhos (label + input) entram direto no grid -> labels alinham entre si.
+.nx-fields .nx-field {
+  display: contents;
+}
+
+// Campo largo: o valor ocupa o resto da linha.
+.nx-fields .nx-field--wide > .nx-input,
+.nx-fields .nx-field > .nx-input--bloco {
+  grid-column: 2 / -1;
+}
+
+// Fallback: .nx-field usado SEM o container .nx-fields (auto-alinhado por si).
+.nx-field:not(.nx-fields *) {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  min-height: 34px;
+  margin: 0;
+}
+
+// Label (aceita .nx-label e .lbl).
+.nx-label,
+.nx-field .lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pr-muted, #6b7280);
+  white-space: nowrap;
+  text-align: left;
+}
+
+// Valor: caixa read-only moderna.
+.nx-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 11px;
+  box-sizing: border-box;
+  background: var(--pr-input-bg, #fff);
+  border: 1px solid var(--pr-input-border, #d7dce4);
+  border-radius: 7px;
+  color: var(--pr-text, #1f2937);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+// Destaque (ex.: Sexo no cabecalho) — leve, nao gritante.
+.nx-input--destaque {
+  background: var(--pr-highlight, #fff7d6);
+  border-color: #e7d38a;
+}
+
+.nx-input--bloco {
+  width: 100%;
+}
+
+.nx-input--multilinha {
+  align-items: flex-start;
+  min-height: 60px;
+  white-space: pre-wrap;
+}
+
+// ---------------------------------------------------------------------------
+// Grid de dados denso e limpo
+// ---------------------------------------------------------------------------
+.nx-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--pr-border-soft, #e3e7ee);
+  border-radius: 8px;
+  background: var(--pr-white, #fff);
+}
+
+.nx-grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--pr-white, #fff);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  border-radius: 8px;
+  overflow: hidden;
+
+  th,
+  td {
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--pr-border-soft, #eef1f5);
+  }
+
+  thead th {
+    background: var(--pr-group-head, #f6f8fb);
+    color: var(--pr-muted, #566072);
+    font-weight: 700;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--pr-border-soft, #e3e7ee);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover td {
+    background: #f2f6fc;
+  }
+
+  tbody tr.is-clicavel,
+  tbody tr[aria-selected] {
+    cursor: pointer;
+  }
+
+  // Linha selecionada — faixa suave com barra de acento (nao azul cheio).
+  tbody tr.is-sel td,
+  tbody tr.nx-grid__sel td,
+  tbody tr[aria-selected='true'] td {
+    background: #e7f0fb;
+    color: var(--pr-text, #1f2937);
+  }
+
+  tbody tr.is-sel td:first-child,
+  tbody tr.nx-grid__sel td:first-child,
+  tbody tr[aria-selected='true'] td:first-child {
+    box-shadow: inset 3px 0 0 var(--pr-primary, #2563a8);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Aviso "origem ainda nao envia" — chip discreto
+// ---------------------------------------------------------------------------
+.nx-aviso-origem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff8e6;
+  border: 1px solid #f0dca6;
+  color: #92600a;
+  font-size: 11.5px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  margin: 0 0 12px;
+}
+
+// ---------------------------------------------------------------------------
+// Botao
+// ---------------------------------------------------------------------------
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px/1 'Segoe UI', Tahoma, sans-serif;
+  padding: 7px 14px;
+  background: var(--pr-white, #fff);
+  border: 1px solid var(--pr-border, #cdd4de);
+  border-radius: 7px;
+  color: var(--pr-text, #1f2937);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+
+  &:hover:not(:disabled) {
+    background: #f4f7fb;
+    border-color: #b9c2ce;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Colunas responsivas utilitarias
+// ---------------------------------------------------------------------------
+.nx-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 4px 20px;
+}
+
+// ---------------------------------------------------------------------------
+// Flags / auxiliares
+// ---------------------------------------------------------------------------
+.flag--h {
+  color: var(--pr-danger, #c0392b);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.flag--l {
+  color: var(--pr-primary, #2563a8);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.flag--sim {
+  color: var(--pr-danger, #c0392b);
+  font-weight: 700;
+}
+
+.dica,
+.vazio-inline {
+  color: var(--pr-muted, #6b7280);
+  font-style: italic;
+  margin: 4px 0;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

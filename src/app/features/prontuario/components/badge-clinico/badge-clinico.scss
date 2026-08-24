@@ -1,0 +1,51 @@
+:host {
+  display: inline-flex;
+}
+
+.pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+
+  &__icone {
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
+  &--neutro {
+    background: color-mix(in srgb, var(--pr-border, #d7e0e5) 45%, var(--pr-surface, #fff));
+    border-color: var(--pr-border, #d7e0e5);
+    color: var(--pr-text, #1f2d33);
+  }
+
+  &--info {
+    background: color-mix(in srgb, var(--pr-primary, #16697a) 12%, var(--pr-surface, #fff));
+    border-color: color-mix(in srgb, var(--pr-primary, #16697a) 35%, var(--pr-surface, #fff));
+    color: var(--pr-primary, #16697a);
+  }
+
+  &--sucesso {
+    background: color-mix(in srgb, var(--pr-accent, #2e7d5b) 12%, var(--pr-surface, #fff));
+    border-color: color-mix(in srgb, var(--pr-accent, #2e7d5b) 35%, var(--pr-surface, #fff));
+    color: var(--pr-accent, #2e7d5b);
+  }
+
+  &--atencao {
+    background: color-mix(in srgb, var(--pr-warning, #b26a00) 14%, var(--pr-surface, #fff));
+    border-color: color-mix(in srgb, var(--pr-warning, #b26a00) 40%, var(--pr-surface, #fff));
+    color: var(--pr-warning, #b26a00);
+  }
+
+  &--perigo {
+    background: color-mix(in srgb, var(--pr-danger, #c62828) 12%, var(--pr-surface, #fff));
+    border-color: color-mix(in srgb, var(--pr-danger, #c62828) 38%, var(--pr-surface, #fff));
+    color: var(--pr-danger, #c62828);
+  }
+}

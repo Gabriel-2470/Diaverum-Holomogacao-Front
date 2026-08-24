@@ -1,0 +1,167 @@
+<section class="vinc prontuario-theme" aria-label="Fila de vínculo">
+  <header class="vinc__cabecalho">
+    <div>
+      <h1 class="vinc__titulo">Fila de vínculo</h1>
+      <p class="vinc__subtitulo">
+        Pacientes migrados que ainda precisam de decisão para casar com o cadastro operacional
+        (sem CPF ou CPF ambíguo). Quem está em "Sem correspondência" tem CPF, mas ninguém no
+        cadastro operacional usa esse CPF — a pessoa só existe no histórico migrado; nada a fazer.
+      </p>
+    </div>
+    <div class="vinc__acoes-topo">
+      <a class="nx-btn" routerLink="/prontuario" [queryParams]="paramsVoltarBusca"
+        >← Voltar à busca</a
+      >
+      <button type="button" class="nx-btn" (click)="carregar()" [disabled]="carregando()">
+        Recarregar
+      </button>
+    </div>
+  </header>
+
+  <nav class="vinc__abas" aria-label="Filtro da fila">
+    <button type="button" class="vinc__aba" [class.vinc__aba--ativa]="aba() === 'decisao'"
+            (click)="aba.set('decisao')">
+      Aguardando decisão ({{ filaDecisao().length }})
+    </button>
+    <button type="button" class="vinc__aba" [class.vinc__aba--ativa]="aba() === 'sem'"
+            (click)="aba.set('sem')">
+      Sem correspondência ({{ filaSem().length }})
+    </button>
+  </nav>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Fila</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="8" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar a fila"
+      descricao="Ocorreu um erro ao consultar o sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (itens().length === 0) {
+    <pr-estado-vazio
+      icone="&#10003;"
+      [titulo]="aba() === 'decisao' ? 'Nenhuma decisão pendente' : 'Nenhum sem correspondência'"
+      [descricao]="aba() === 'decisao'
+        ? 'Todos os pacientes migrados já foram vinculados ou marcados.'
+        : 'Nenhum paciente do histórico sem correspondência no cadastro operacional.'"
+    />
+  } @else {
+    @if (erroAcao()) {
+      <p class="vinc__erro" role="alert">{{ erroAcao() }}</p>
+    }
+
+    <div class="nx-grid-wrap">
+      <table class="nx-grid vinc__tabela">
+        <caption class="sr-only">
+          Fila de registros do espelho aguardando vínculo. Cada linha pode ser expandida para ver os
+          candidatos locais e decidir o vínculo.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="vinc__col-exp"><span class="sr-only">Expandir</span></th>
+            <th scope="col">Nome</th>
+            <th scope="col">CPF</th>
+            <th scope="col">Nascimento</th>
+            <th scope="col">Status</th>
+            <th scope="col">Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of itens(); track item.idProntPaciente) {
+            <tr
+              class="is-clicavel vinc__linha"
+              [class.is-sel]="expandido(item)"
+              tabindex="0"
+              role="button"
+              [attr.aria-expanded]="expandido(item)"
+              [attr.aria-label]="'Detalhes de ' + (item.nome || 'paciente')"
+              (click)="alternarExpandir(item)"
+              (keydown.enter)="alternarExpandir(item)"
+              (keydown.space)="$event.preventDefault(); alternarExpandir(item)"
+            >
+              <td class="vinc__col-exp">
+                <span class="vinc__caret" [class.vinc__caret--aberto]="expandido(item)" aria-hidden="true">▸</span>
+              </td>
+              <td class="vinc__nome">{{ item.nome || '—' }}</td>
+              <td class="tabular">{{ item.cpf || '—' }}</td>
+              <td class="tabular">{{ (item.dataNascimento | date: 'dd/MM/yyyy') || '—' }}</td>
+              <td>
+                <span class="vinc-status" [ngClass]="statusClasse(item)">{{ statusRotulo(item) }}</span>
+              </td>
+              <td class="vinc__motivo">{{ item.motivoConflito || '—' }}</td>
+            </tr>
+
+            @if (expandido(item)) {
+              <tr class="vinc__detalhe-linha">
+                <td class="vinc__detalhe" colspan="6" (click)="$event.stopPropagation()">
+                  <div class="vinc__detalhe-box">
+                    <h2 class="vinc__detalhe-titulo">Candidatos locais</h2>
+
+                    @if (item.candidatos.length === 0) {
+                      <p class="dica">Nenhum candidato local sugerido para este registro.</p>
+                    } @else {
+                      <ul class="vinc__cands">
+                        @for (c of item.candidatos; track c.idPaciente) {
+                          <li class="vinc__cand">
+                            <label class="vinc__cand-lbl">
+                              <input
+                                type="radio"
+                                class="vinc__cand-radio"
+                                [name]="'cand-' + item.idProntPaciente"
+                                [checked]="selecionado(item) === c.idPaciente"
+                                [disabled]="processandoId() === item.idProntPaciente"
+                                (change)="selecionarCandidato(item, c.idPaciente)"
+                              />
+                              <span class="vinc__cand-info">
+                                <strong class="vinc__cand-nome">{{ c.nome || '—' }}</strong>
+                                <span class="tabular vinc__cand-cpf">{{ c.cpf || 'sem CPF' }}</span>
+                                @if (c.nomeClinica) {
+                                  <span class="vinc__cand-clinica">{{ c.nomeClinica }}</span>
+                                }
+                                @if (c.dataNascimento) {
+                                  <span class="tabular vinc__cand-nasc">{{ c.dataNascimento | date: 'dd/MM/yyyy' }}</span>
+                                }
+                              </span>
+                            </label>
+                          </li>
+                        }
+                      </ul>
+                    }
+
+                    <div class="vinc__detalhe-acoes">
+                      <button
+                        type="button"
+                        class="nx-btn nx-btn--primary"
+                        (click)="vincular(item)"
+                        [disabled]="selecionado(item) == null || processandoId() === item.idProntPaciente"
+                      >
+                        @if (processandoId() === item.idProntPaciente) {
+                          Processando…
+                        } @else {
+                          Vincular ao selecionado
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        class="nx-btn"
+                        (click)="marcarSem(item)"
+                        [disabled]="processandoId() === item.idProntPaciente"
+                      >
+                        Sem correspondência
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

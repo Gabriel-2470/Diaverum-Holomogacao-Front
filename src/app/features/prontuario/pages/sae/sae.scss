@@ -1,0 +1,58 @@
+@use '../nx';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+// Grid do plano de SAE.
+.sae-grid {
+  &__texto {
+    min-width: 240px;
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  // Marcador "evidenciar" (indEvidenciar) — estrelinha âmbar discreta.
+  &__mk {
+    color: #b8860b;
+    margin-right: 5px;
+    font-size: 11px;
+  }
+
+  // "· última dd/MM/yyyy" ao lado do total de execuções.
+  &__ult {
+    color: var(--pr-muted, #6b7280);
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+
+  // Linha de item marcado para evidenciar — acento suave à esquerda.
+  &__evid td:first-child {
+    box-shadow: inset 3px 0 0 #e0b64b;
+  }
+}
+
+// Badge de situação (Vigente / Encerrada).
+.sae-sit {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  &--vigente {
+    color: #1f7a3d;
+    background: #e8f6ec;
+    border: 1px solid #b6e2c4;
+  }
+
+  &--encerrada {
+    color: #566072;
+    background: #eef1f5;
+    border: 1px solid #dde2ea;
+  }
+}

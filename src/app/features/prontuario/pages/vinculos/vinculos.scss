@@ -1,0 +1,223 @@
+@use '../nx';
+@use '../nx-escrita'; // .nx-btn--primary + variações de botão
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.vinc {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px 32px;
+  font-variant-numeric: tabular-nums;
+
+  &__cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--pr-text, #1f2937);
+  }
+
+  &__subtitulo {
+    margin: 3px 0 0;
+    max-width: 640px;
+    font-size: 12px;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  &__acoes-topo {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__erro {
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    background: color-mix(in srgb, var(--pr-danger, #c0392b) 8%, #fff);
+    border: 1px solid color-mix(in srgb, var(--pr-danger, #c0392b) 30%, #fff);
+    border-radius: 8px;
+    color: var(--pr-danger, #c0392b);
+    font-size: 12px;
+  }
+
+  &__tabela {
+    min-width: 720px;
+  }
+
+  &__col-exp {
+    width: 28px;
+    text-align: center;
+    padding-left: 8px;
+    padding-right: 4px;
+  }
+
+  &__caret {
+    display: inline-block;
+    color: var(--pr-muted, #6b7280);
+    transition: transform 0.12s ease;
+
+    &--aberto {
+      transform: rotate(90deg);
+      color: var(--pr-primary, #2563a8);
+    }
+  }
+
+  &__nome {
+    font-weight: 600;
+  }
+
+  &__motivo {
+    color: var(--pr-muted, #6b7280);
+    white-space: normal;
+    max-width: 260px;
+  }
+
+  // ---- Linha de detalhe (candidatos) ----
+  &__detalhe-linha:hover td {
+    // Neutraliza o hover do .nx-grid nesta linha (não é clicável).
+    background: transparent;
+  }
+
+  &__detalhe {
+    background: #f7f9fc;
+    padding: 0;
+  }
+
+  &__detalhe-box {
+    padding: 12px 16px 14px;
+  }
+
+  &__detalhe-titulo {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--pr-muted, #566072);
+  }
+
+  &__cands {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__cand-lbl {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px;
+    background: var(--pr-white, #fff);
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--pr-primary, #2563a8);
+    }
+  }
+
+  &__cand-radio {
+    accent-color: var(--pr-primary, #2563a8);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+
+  &__cand-info {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  &__cand-nome {
+    font-weight: 600;
+    color: var(--pr-text, #1f2937);
+  }
+
+  &__cand-cpf {
+    color: var(--pr-muted, #6b7280);
+    letter-spacing: 0.02em;
+  }
+
+  &__cand-clinica,
+  &__cand-nasc {
+    color: var(--pr-muted, #6b7280);
+    font-size: 11.5px;
+  }
+
+  &__detalhe-acoes {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+// ---- Chip de status da fila ----
+.vinc-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+
+  &--conflito {
+    color: #b00020;
+    background: #fdecec;
+    border: 1px solid #f5c2c2;
+  }
+
+  &--pendente {
+    color: #92600a;
+    background: #fff8e6;
+    border: 1px solid #f0dca6;
+  }
+
+  &--sem {
+    color: #566072;
+    background: #eef1f5;
+    border: 1px solid #dde2ea;
+  }
+}
+
+/* Abas: separa o que exige decisão (fila real) do "sem correspondência" (só consulta). */
+.vinc__abas {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.vinc__aba {
+  border: 1px solid var(--pr-border, #d6e2e4);
+  background: transparent;
+  color: var(--pr-muted, #5a727a);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+}
+.vinc__aba--ativa {
+  background: var(--pr-surface, #fff);
+  color: var(--pr-primary, #16697a);
+  border-bottom-color: transparent;
+}

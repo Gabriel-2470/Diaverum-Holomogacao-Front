@@ -1,0 +1,81 @@
+@use '../nx';
+@use '../nx-escrita';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.lau {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 10px;
+  align-items: start;
+
+  &__acoes {
+    margin-top: 8px;
+  }
+
+  &__nada {
+    color: var(--pr-muted);
+    font-style: italic;
+  }
+
+  // -------------------------------------------------------------------------
+  // Escrita nativa de documentos/laudos (Etapa 5)
+  // -------------------------------------------------------------------------
+  &__escrita {
+    margin: 0 0 12px;
+  }
+
+  &__escrita-barra {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    flex-wrap: wrap;
+  }
+
+  &__escrita-sep {
+    flex: 1 1 auto;
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: var(--pr-primary, #2563a8);
+    }
+  }
+
+  &__form {
+    margin: 0 0 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 10px;
+    background: var(--pr-group-head, #f6f8fb);
+  }
+
+  &__arquivo-info {
+    flex-basis: 100%;
+    margin: -4px 0 0;
+    font-size: 11.5px;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  &__acao {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 12px 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--pr-border-soft, #eef1f5);
+  }
+}

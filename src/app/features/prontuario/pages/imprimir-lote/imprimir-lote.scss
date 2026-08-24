@@ -1,0 +1,213 @@
+// pages/imprimir-lote/imprimir-lote.scss — impressão EM LOTE de vários prontuários.
+// Espelha o visual de pages/imprimir/imprimir.scss (documento print-friendly,
+// auto-contido, sem o tema nx), adicionando UMA quebra de página por paciente.
+
+.impl {
+  padding: 8px;
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+
+    &-titulo {
+      font-weight: 700;
+    }
+  }
+
+  &__estado {
+    padding: 16px;
+    color: var(--pr-muted, #5a5a5a);
+
+    &--erro {
+      color: var(--pr-danger, #c62828);
+    }
+  }
+
+  // Wrapper por paciente: quebra de página entre pacientes (não após o último).
+  &__paciente {
+    &:not(:last-child) {
+      break-after: page;
+      page-break-after: always;
+    }
+  }
+
+  &__doc {
+    max-width: 860px;
+    margin: 0 auto 24px;
+    padding: 24px 28px;
+    background: #fff;
+    border: 1px solid var(--pr-border, #b9b9b9);
+    color: #111;
+    font-size: 12px;
+    line-height: 1.4;
+
+    &--erro {
+      border-color: #e0a0a0;
+    }
+  }
+
+  &__cabecalho {
+    border-bottom: 2px solid #111;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+  }
+
+  &__meta {
+    margin: 2px 0 0;
+    color: #444;
+  }
+
+  &__paciente-cab {
+    border: 1px solid #999;
+    padding: 6px 10px;
+    margin-bottom: 12px;
+    background: #f7f7f7;
+  }
+
+  &__paciente-nome {
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  &__paciente-linha {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 4px;
+  }
+
+  &__secao {
+    margin-bottom: 14px;
+    break-inside: avoid-page;
+
+    h2 {
+      font-size: 13px;
+      margin: 0 0 6px;
+      padding: 3px 6px;
+      background: #e8e8e8;
+      border: 1px solid #bbb;
+    }
+
+    h3 {
+      font-size: 12px;
+      margin: 8px 0 4px;
+    }
+  }
+
+  &__pares {
+    border-collapse: collapse;
+    width: 100%;
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 3px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      width: 160px;
+      background: #f2f2f2;
+      font-weight: 600;
+    }
+  }
+
+  &__grid {
+    border-collapse: collapse;
+    width: 100%;
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 3px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f2f2;
+    }
+
+    tbody tr {
+      break-inside: avoid;
+    }
+  }
+
+  &__critico {
+    color: #b00020;
+    font-weight: 700;
+  }
+
+  &__vazio {
+    color: #666;
+    font-style: italic;
+    margin: 4px 0;
+  }
+
+  // Aviso "origem ainda não envia" / bloco de erro — print-friendly, auto-contido.
+  &__aviso {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff8e6;
+    border: 1px solid #f0dca6;
+    color: #92600a;
+    padding: 6px 11px;
+    border-radius: 6px;
+    margin: 4px 0;
+  }
+
+  &__evolucao {
+    margin-bottom: 10px;
+    break-inside: avoid;
+
+    &-cab {
+      border-bottom: 1px dotted #999;
+      margin-bottom: 3px;
+    }
+
+    &-texto {
+      white-space: pre-wrap;
+    }
+  }
+
+  &__presc-cab {
+    font-weight: 600;
+    margin: 8px 0 4px;
+  }
+
+  &__rodape {
+    margin-top: 16px;
+    padding-top: 6px;
+    border-top: 1px solid #999;
+    font-size: 10px;
+    color: #555;
+  }
+}
+
+// ---- Impressão ----
+@media print {
+  .nao-imprime {
+    display: none !important;
+  }
+
+  .impl {
+    padding: 0;
+
+    &__doc {
+      max-width: none;
+      margin: 0;
+      border: none;
+      padding: 0;
+    }
+  }
+}

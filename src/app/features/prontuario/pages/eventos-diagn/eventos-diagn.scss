@@ -1,0 +1,97 @@
+@use '../nx';
+@use '../nx-escrita';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.ev {
+  &__grupo {
+    margin-top: 6px;
+  }
+
+  &__detalhe {
+    margin-top: 12px;
+  }
+
+  &__tag {
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--pr-danger, #c0392b);
+    background: #fdecea;
+    border: 1px solid #f3c6c1;
+  }
+
+  // -------------------------------------------------------------------------
+  // Escrita nativa de problemas/CID (Etapa 2)
+  // -------------------------------------------------------------------------
+  &__escrita-barra {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    flex-wrap: wrap;
+  }
+
+  &__escrita-sep {
+    flex: 1 1 auto;
+  }
+
+  &__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pr-muted, #6b7280);
+    cursor: pointer;
+    user-select: none;
+
+    input {
+      accent-color: var(--pr-primary, #2563a8);
+    }
+
+    &--form {
+      flex-basis: 100%;
+    }
+  }
+
+  &__form {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--pr-border-soft, #e3e7ee);
+    border-radius: 10px;
+    background: var(--pr-group-head, #f6f8fb);
+  }
+
+  &__registro {
+    margin: 0 0 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__registro-meta {
+    font-weight: 500;
+    color: var(--pr-muted, #6b7280);
+  }
+
+  &__registro-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--pr-border-soft, #eef1f5);
+  }
+}
+
+.nx-subtab.desabilitado {
+  cursor: default;
+}

@@ -1,0 +1,154 @@
+<section class="pagina-exames prontuario-theme" aria-label="Exames">
+  <div class="nx-subtabs" aria-label="Sub-abas de exames">
+    <button
+      type="button"
+      class="nx-subtab"
+      [class.is-ativa]="subAba() === 'lista'"
+      [attr.aria-pressed]="subAba() === 'lista'"
+      (click)="definirSubAba('lista')"
+    >
+      Lista de Exames
+    </button>
+    <button
+      type="button"
+      class="nx-subtab"
+      [class.is-ativa]="subAba() === 'flow'"
+      [attr.aria-pressed]="subAba() === 'flow'"
+      (click)="definirSubAba('flow')"
+    >
+      Flow de Exames
+    </button>
+  </div>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">Exames</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="8" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar os exames"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (ordenados().length === 0) {
+    <pr-estado-vazio icone="—" titulo="Nenhum exame" descricao="Este paciente ainda não possui exames registrados." />
+  } @else if (subAba() === 'flow') {
+    <div class="nx-group">
+      <div class="nx-group-head">Flow de Exames</div>
+      @if (flowColunas().length === 0) {
+        <p class="vazio-inline nx-pad">Sem datas de coleta para montar o flow.</p>
+      } @else {
+        <div class="nx-grid-wrap">
+          <table class="nx-grid flow-grid">
+            <caption class="sr-only">Matriz de exames por data de coleta. Cada linha é um exame; cada coluna, uma data. Valores com flag alto (H) ou baixo (L) aparecem coloridos.</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="flow-grid__exame">Exame</th>
+                @for (col of flowColunas(); track col.iso) {
+                  <th scope="col" class="tabular flow-grid__data">{{ col.iso | date: 'dd/MM/yyyy' }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (linha of flowLinhas(); track linha.chave) {
+                <tr>
+                  <th scope="row" class="flow-grid__exame">
+                    <span class="flow-grid__nome">{{ linha.nome }}</span>
+                    @if (linha.loinc) {
+                      <span class="flow-grid__loinc tabular">{{ linha.loinc }}</span>
+                    }
+                  </th>
+                  @for (cel of linha.celulas; track $index) {
+                    <td class="tabular flow-grid__cel">
+                      @if (cel.flag === 'H') {
+                        <span class="flag--h">{{ cel.valor }} ↑<span class="sr-only"> acima da referência</span></span>
+                      } @else if (cel.flag === 'L') {
+                        <span class="flag--l">{{ cel.valor }} ↓<span class="sr-only"> abaixo da referência</span></span>
+                      } @else {
+                        {{ cel.valor }}
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="split">
+      <div class="nx-group">
+        <div class="nx-group-head">Exames</div>
+        <div class="nx-grid-wrap">
+          <table class="nx-grid">
+            <caption class="sr-only">Exames por data de coleta, mais recentes primeiro. Clique na linha para ver o resultado completo.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Descrição</th>
+                <th scope="col">Resultado</th>
+                <th scope="col">LOINC</th>
+                <th scope="col">Flag</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of ordenados(); track e.idExame) {
+                <tr
+                  class="is-clicavel"
+                  [class.is-sel]="idSelecionado() === e.idExame"
+                  [attr.aria-selected]="idSelecionado() === e.idExame"
+                  tabindex="0"
+                  (click)="selecionar(e)"
+                  (keydown.enter)="selecionar(e)"
+                >
+                  <td class="tabular">{{ e.dataColeta ? (e.dataColeta | date: 'dd/MM/yyyy') : '—' }}</td>
+                  <td>{{ e.nomeExame || e.codigoLocal || '—' }}</td>
+                  <td class="tabular">{{ valorGrid(e) }}</td>
+                  <td class="tabular">{{ e.codigoLoinc || '—' }}</td>
+                  <td class="col-flag">
+                    @if (flag(e) === 'H') {
+                      <span class="flag--h">↑ H<span class="sr-only"> acima da referência</span></span>
+                    } @else if (flag(e) === 'L') {
+                      <span class="flag--l">↓ L<span class="sr-only"> abaixo da referência</span></span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside class="nx-group" aria-label="Resultado Texto">
+        <div class="nx-group-head">Resultado Texto</div>
+        <div class="nx-pad">
+          @if (selecionado(); as ex) {
+            <div class="nx-field">
+              <span class="lbl">Exame:</span>
+              <span class="nx-input">{{ ex.nomeExame || ex.codigoLocal || '—' }}</span>
+            </div>
+            <div class="nx-field">
+              <span class="lbl">Data coleta:</span>
+              <span class="nx-input tabular">{{ ex.dataColeta ? (ex.dataColeta | date: 'dd/MM/yyyy') : '—' }}</span>
+            </div>
+            <div class="nx-field">
+              <span class="lbl">Data resultado:</span>
+              <span class="nx-input tabular">{{ ex.dataResultado ? (ex.dataResultado | date: 'dd/MM/yyyy') : '—' }}</span>
+            </div>
+            <div class="nx-field">
+              <span class="lbl">Referência:</span>
+              <span class="nx-input tabular">{{ ex.faixaReferencia || '—' }}</span>
+            </div>
+            <div class="texto-livre nx-input">{{ ex.valorTexto || valorGrid(ex) }}</div>
+          } @else {
+            <p class="dica">Selecione um exame na lista para ver o resultado completo.</p>
+          }
+        </div>
+      </aside>
+    </div>
+  }
+</section>

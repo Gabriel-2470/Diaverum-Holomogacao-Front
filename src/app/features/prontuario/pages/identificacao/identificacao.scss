@@ -1,0 +1,48 @@
+@use '../nx';
+
+:host {
+  display: block;
+  font-size: 12px;
+}
+
+.ident {
+  &__cad {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  &__foto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 84px;
+    height: 96px;
+    background: #f6f8fb;
+    border: 1px solid var(--pr-border-soft);
+    border-radius: 8px;
+  }
+
+  // .ident__campos agora é um .nx-fields (grid alinhado) — sem grid próprio.
+
+  &__modalidade {
+    font-weight: 700;
+    color: var(--pr-danger);
+    background: #fdecea;
+    border-color: #f3c6c1;
+  }
+
+  &__diverg {
+    margin-top: 10px;
+    border: 1px solid var(--pr-border-soft);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 560px) {
+  .ident__cad {
+    grid-template-columns: 1fr;
+  }
+}

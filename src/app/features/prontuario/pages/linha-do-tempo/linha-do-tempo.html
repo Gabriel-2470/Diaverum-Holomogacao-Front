@@ -1,0 +1,81 @@
+<section class="linha prontuario-theme" aria-label="Linha do tempo clinica">
+  <!-- Filtros -->
+  <div class="linha__filtros" role="group" aria-label="Filtros da linha do tempo">
+    <div class="chips" role="group" aria-label="Filtrar por tipo">
+      @for (c of chips; track c.valor) {
+        <button
+          type="button"
+          class="chip"
+          [class.chip--ativo]="tipoAtivo(c.valor)"
+          [attr.aria-pressed]="tipoAtivo(c.valor)"
+          (click)="alternarTipo(c.valor)"
+        >
+          {{ c.rotulo }}
+        </button>
+      }
+    </div>
+
+    <div class="intervalo">
+      <label class="intervalo__campo">
+        <span>De</span>
+        <input
+          type="date"
+          [ngModel]="de()"
+          (ngModelChange)="onDeChange($event)"
+          (change)="aplicarIntervalo()"
+        />
+      </label>
+      <label class="intervalo__campo">
+        <span>Ate</span>
+        <input
+          type="date"
+          [ngModel]="ate()"
+          (ngModelChange)="onAteChange($event)"
+          (change)="aplicarIntervalo()"
+        />
+      </label>
+      @if (temFiltro()) {
+        <button type="button" class="pr-link" (click)="limparFiltros()">Limpar filtros</button>
+      }
+    </div>
+  </div>
+
+  @if (carregando()) {
+    <div class="linha__card"><pr-skeleton [linhas]="8" /></div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Nao foi possivel carregar a linha do tempo"
+      descricao="Ocorreu um erro ao obter os eventos do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="aplicarIntervalo()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (grupos().length === 0) {
+    <pr-estado-vazio
+      icone="—"
+      titulo="Nenhum evento encontrado"
+      [descricao]="temFiltro() ? 'Nenhum evento para os filtros selecionados.' : 'Este paciente ainda nao possui eventos registrados.'"
+    />
+  } @else {
+    <div class="timeline">
+      @for (g of grupos(); track g.chave) {
+        <div class="timeline__grupo">
+          <h3 class="timeline__dia">{{ g.rotulo }}</h3>
+          <div class="timeline__eventos">
+            @for (ev of g.eventos; track $index) {
+              <pr-timeline-item [evento]="ev" />
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (temMais()) {
+      <div class="linha__mais">
+        <button type="button" class="nx-btn" [disabled]="carregandoMais()" (click)="carregarMais()">
+          {{ carregandoMais() ? 'Carregando...' : 'Carregar mais' }}
+        </button>
+      </div>
+    }
+  }
+</section>

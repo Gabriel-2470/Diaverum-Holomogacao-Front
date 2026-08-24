@@ -1,0 +1,108 @@
+<section class="pagina-sae prontuario-theme" aria-label="SAE">
+  <div class="nx-subtabs" aria-label="Sub-abas de SAE">
+    <button
+      type="button"
+      class="nx-subtab"
+      [class.is-ativa]="subAba() === 'diagnostico'"
+      [attr.aria-pressed]="subAba() === 'diagnostico'"
+      (click)="definirSubAba('diagnostico')"
+    >
+      Diagnóstico de Enfermagem
+    </button>
+    <button
+      type="button"
+      class="nx-subtab"
+      [class.is-ativa]="subAba() === 'prescricao'"
+      [attr.aria-pressed]="subAba() === 'prescricao'"
+      (click)="definirSubAba('prescricao')"
+    >
+      Prescrição de Enfermagem para HD
+    </button>
+  </div>
+
+  @if (carregando()) {
+    <div class="nx-group">
+      <div class="nx-group-head">SAE</div>
+      <div class="nx-pad"><pr-skeleton [linhas]="8" /></div>
+    </div>
+  } @else if (erro()) {
+    <pr-estado-vazio
+      icone="!"
+      titulo="Não foi possível carregar a SAE"
+      descricao="Ocorreu um erro ao obter os dados do sistema de origem."
+    >
+      <button type="button" class="nx-btn" (click)="carregar()">Tentar novamente</button>
+    </pr-estado-vazio>
+  } @else if (vazio()) {
+    <div class="nx-aviso-origem">⚠ Este paciente não possui registros de SAE no histórico migrado.</div>
+    <pr-estado-vazio
+      icone="—"
+      titulo="Sem registros de SAE"
+      descricao="Este paciente ainda não possui plano de enfermagem registrado."
+    />
+  } @else {
+    <div class="nx-group">
+      <div class="nx-group-head">
+        @if (subAba() === 'diagnostico') {
+          Diagnósticos de Enfermagem Registrados
+        } @else {
+          Prescrição de Enfermagem para HD
+        }
+      </div>
+      <div class="nx-grid-wrap">
+        <table class="nx-grid sae-grid">
+          <caption class="sr-only">
+            Plano de SAE do paciente. Cada linha é um item do plano de enfermagem, com período de
+            vigência, responsável, situação e contagem de execuções.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Início</th>
+              <th scope="col">Fim</th>
+              @if (subAba() === 'diagnostico') {
+                <th scope="col">Diagnóstico</th>
+              } @else {
+                <th scope="col">Prescrição</th>
+              }
+              <th scope="col">Responsável</th>
+              <th scope="col">Situação</th>
+              <th scope="col">Execuções</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of ordenados(); track p.idSaePlano) {
+              <tr [class.sae-grid__evid]="p.indEvidenciar">
+                <td class="tabular">{{ (p.dataInicio | date: 'dd/MM/yyyy') || '—' }}</td>
+                <td class="tabular">{{ (p.dataFim | date: 'dd/MM/yyyy') || '—' }}</td>
+                <td class="sae-grid__texto">
+                  @if (p.indEvidenciar) {
+                    <span class="sae-grid__mk" title="Marcado para evidenciar" aria-label="Marcado para evidenciar">★</span>
+                  }
+                  @if (subAba() === 'diagnostico') {
+                    {{ p.diagnostico || '—' }}
+                  } @else {
+                    {{ p.prescricao || '—' }}
+                  }
+                </td>
+                <td>{{ p.responsavelNome || '—' }}</td>
+                <td>
+                  <span
+                    class="sae-sit"
+                    [class.sae-sit--vigente]="!p.dataFim"
+                    [class.sae-sit--encerrada]="p.dataFim"
+                  >{{ situacao(p) }}</span>
+                </td>
+                <td class="tabular">
+                  {{ p.totalExecucoes ?? 0 }}
+                  @if (p.ultimaExecucao) {
+                    <span class="sae-grid__ult">· última {{ p.ultimaExecucao | date: 'dd/MM/yyyy' }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</section>

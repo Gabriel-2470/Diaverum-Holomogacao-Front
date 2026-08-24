@@ -1,0 +1,398 @@
+<div class="impl">
+  <!-- Barra de ações (não sai na impressão) -->
+  <div class="impl__toolbar nao-imprime">
+    <button type="button" class="nx-btn" (click)="voltar()">‹ Voltar à busca</button>
+    <span class="impl__toolbar-titulo">
+      Impressão em lote — {{ documentos().length }}
+      {{ documentos().length === 1 ? 'prontuário' : 'prontuários' }}
+    </span>
+    <button type="button" class="nx-btn" (click)="imprimir()" [disabled]="carregando()">🖨 Imprimir</button>
+  </div>
+
+  @if (carregando()) {
+    <p class="impl__estado nao-imprime">Montando os documentos…</p>
+  } @else if (semIds()) {
+    <p class="impl__estado impl__estado--erro nao-imprime">
+      Nenhum paciente selecionado para impressão.
+      <button type="button" class="nx-btn" (click)="voltar()">Voltar à busca</button>
+    </p>
+  } @else {
+    @for (doc of documentos(); track doc.id) {
+      <article class="impl__paciente">
+        @if (doc.erro) {
+          <div class="impl__doc impl__doc--erro">
+            <header class="impl__cabecalho">
+              <h1>Prontuário do Paciente</h1>
+            </header>
+            <p class="impl__aviso">
+              ⚠ Não foi possível carregar o prontuário do paciente (código {{ doc.id }}). Os demais
+              prontuários deste lote seguem normalmente.
+            </p>
+          </div>
+        } @else {
+          <div class="impl__doc">
+            <!-- Cabeçalho do documento -->
+            <header class="impl__cabecalho">
+              <h1>Prontuário do Paciente</h1>
+              <p class="impl__meta">
+                Clínica: <strong>{{ doc.cadastro?.nomeClinica || '—' }}</strong>
+                · Emitido em {{ emissao | date: 'dd/MM/yyyy HH:mm' }}
+                · Fonte: sistema de origem (somente leitura)
+              </p>
+            </header>
+
+            <!-- Identificação resumida (sempre presente) -->
+            <section class="impl__paciente-cab">
+              <div class="impl__paciente-nome">{{ doc.cadastro?.nome || '—' }}</div>
+              <div class="impl__paciente-linha">
+                <span><strong>CPF:</strong> {{ doc.cadastro?.cpf || '—' }}</span>
+                <span><strong>CNS:</strong> {{ doc.cadastro?.cns || '—' }}</span>
+                <span><strong>Nascimento:</strong> {{ data(doc.cadastro?.dataNascimento) }} ({{ idade(doc) }})</span>
+                <span><strong>Sexo:</strong> {{ doc.cadastro?.genero || '—' }}</span>
+                <span><strong>Tratamento:</strong> {{ doc.cadastro?.modalidadeTratamento || '—' }}</span>
+              </div>
+            </section>
+
+            <!-- 1. Identificação completa -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('identificacao') }}</h2>
+              <table class="impl__pares">
+                <tr><th>Endereço</th><td>{{ endereco(doc) }}</td></tr>
+                <tr><th>Telefone</th><td>{{ doc.cadastro?.telefone || '—' }}</td></tr>
+                <tr><th>Email</th><td>{{ doc.cadastro?.email || '—' }}</td></tr>
+                <tr><th>Clínica</th><td>{{ doc.cadastro?.nomeClinica || '—' }}</td></tr>
+                <tr><th>Diabetes</th><td>{{ doc.cadastro?.indDiabetes === true ? 'Sim' : doc.cadastro?.indDiabetes === false ? 'Não' : '—' }}</td></tr>
+              </table>
+            </section>
+
+            <!-- 2. Dados clínicos: SÓ alergias -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('dados-clinicos') }}</h2>
+              <h3>Alergias e intolerâncias</h3>
+              @if (doc.alergias.length === 0) {
+                <p class="impl__vazio">Nenhuma alergia registrada pela origem.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>Substância</th><th>Categoria</th><th>Criticidade</th><th>Reação</th></tr></thead>
+                  <tbody>
+                    @for (a of doc.alergias; track a.idAlergia) {
+                      <tr>
+                        <td>{{ a.substancia || '—' }}</td>
+                        <td>{{ a.categoria || '—' }}</td>
+                        <td [class.impl__critico]="(a.criticidade || '').toLowerCase() === 'high' || (a.criticidade || '').toLowerCase() === 'alta'">{{ a.criticidade || '—' }}</td>
+                        <td>{{ a.reacao || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- 3. Eventos e Diagn.: problemas/CID -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('eventos') }}</h2>
+              @if (doc.problemas.length === 0) {
+                <p class="impl__vazio">Nenhum diagnóstico registrado pela origem.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>CID-10</th><th>Descrição</th><th>Principal</th><th>Status</th><th>Diagnóstico</th></tr></thead>
+                  <tbody>
+                    @for (p of doc.problemas; track p.idProblema) {
+                      <tr>
+                        <td>{{ p.cid10 || '—' }}</td>
+                        <td>{{ p.descricao || '—' }}</td>
+                        <td>{{ p.principal ? 'Sim' : 'Não' }}</td>
+                        <td>{{ p.statusOrigem || '—' }}</td>
+                        <td>{{ data(p.dataDiagnostico) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- 4. SAE (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('sae') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 5. HC / Evolução -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('hc-evolucao') }}</h2>
+              @if (doc.evolucoes.length === 0) {
+                <p class="impl__vazio">Nenhuma evolução sincronizada.</p>
+              } @else {
+                @for (e of doc.evolucoes; track e.idEvolucao) {
+                  <div class="impl__evolucao">
+                    <div class="impl__evolucao-cab">
+                      <strong>{{ dataHora(e.dataEvolucao) }}</strong>
+                      · {{ e.tipo || '—' }}
+                      @if (e.profissionalNome) { · {{ e.profissionalNome }} }
+                      @if (e.profissionalConselho) { ({{ e.profissionalConselho }}) }
+                    </div>
+                    <div class="impl__evolucao-texto">{{ e.texto || '—' }}</div>
+                  </div>
+                }
+              }
+            </section>
+
+            <!-- 6. Exames -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('exames') }}</h2>
+              @if (doc.exames.length === 0) {
+                <p class="impl__vazio">Nenhum exame sincronizado.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>Coleta</th><th>Exame</th><th>Resultado</th><th>Referência</th><th>Flag</th></tr></thead>
+                  <tbody>
+                    @for (e of doc.exames; track e.idExame) {
+                      <tr>
+                        <td>{{ data(e.dataColeta) }}</td>
+                        <td>{{ e.nomeExame || e.codigoLoinc || '—' }}</td>
+                        <td>{{ resultadoExame(e) }}</td>
+                        <td>{{ e.faixaReferencia || '—' }}</td>
+                        <td [class.impl__critico]="e.flagInterpretacao === 'H' || e.flagInterpretacao === 'L'">{{ e.flagInterpretacao || '' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- 7. Medicações -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('medicacoes') }}</h2>
+              @if (medicacoes(doc).length === 0) {
+                <p class="impl__vazio">Nenhuma medicação (não-diálise) sincronizada.</p>
+              } @else {
+                @for (p of medicacoes(doc); track p.idPrescricao) {
+                  <div class="impl__presc-cab">
+                    Prescrição de {{ data(p.dataPrescricao) }} · {{ p.statusOrigem || '—' }}
+                    @if (p.prescritorNome) { · {{ p.prescritorNome }} }
+                  </div>
+                  <table class="impl__grid">
+                    <thead><tr><th>Medicação</th><th>Posologia</th><th>Observação</th></tr></thead>
+                    <tbody>
+                      @for (i of p.itens; track i.idPrescricaoItem) {
+                        <tr>
+                          <td>{{ i.medicamentoOuParametro || '—' }}</td>
+                          <td>{{ posologia(i) }}</td>
+                          <td>{{ i.observacao || '—' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              }
+            </section>
+
+            <!-- 8. Sol. Exames (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('sol-exames') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 9. Laudos / Documentos -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('laudos') }}</h2>
+              @if (doc.documentos.length === 0) {
+                <p class="impl__vazio">Nenhum documento sincronizado.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>Data</th><th>Tipo</th><th>Título</th></tr></thead>
+                  <tbody>
+                    @for (d of doc.documentos; track d.idDocumento) {
+                      <tr>
+                        <td>{{ data(d.dataDocumento) }}</td>
+                        <td>{{ d.tipo || '—' }}</td>
+                        <td>{{ d.titulo || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- 10. Acessos (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('acessos') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 11. Presc. HD/DP -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('presc-hd') }}</h2>
+              @if (prescricoesDialise(doc).length === 0) {
+                <p class="impl__vazio">Nenhuma prescrição de diálise sincronizada.</p>
+              } @else {
+                @for (p of prescricoesDialise(doc); track p.idPrescricao) {
+                  <div class="impl__presc-cab">
+                    Prescrição de {{ data(p.dataPrescricao) }} · {{ p.statusOrigem || '—' }}
+                    @if (p.prescritorNome) { · {{ p.prescritorNome }} }
+                  </div>
+                  <table class="impl__grid">
+                    <thead><tr><th>Parâmetro / Medicação</th><th>Posologia</th></tr></thead>
+                    <tbody>
+                      @for (i of p.itens; track i.idPrescricaoItem) {
+                        <tr>
+                          <td>{{ i.medicamentoOuParametro || '—' }}</td>
+                          <td>{{ posologia(i) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              }
+              @if (ultimaSessao(doc); as s) {
+                <h3>Parâmetros da última sessão ({{ data(s.dataSessao) }})</h3>
+                <table class="impl__pares">
+                  <tr><th>Duração</th><td>{{ s.duracaoMin != null ? s.duracaoMin + ' min' : '—' }}</td></tr>
+                  <tr><th>Peso pré / pós</th><td>{{ s.pesoPre ?? '—' }} / {{ s.pesoPos ?? '—' }} kg</td></tr>
+                  <tr><th>Kt/V</th><td>{{ s.ktv ?? '—' }}</td></tr>
+                  <tr><th>URR</th><td>{{ s.urr ?? '—' }}</td></tr>
+                </table>
+              }
+            </section>
+
+            <!-- 12. TX (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('tx') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 13. Social (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('social') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 14. Ver HD/DP: sessões de hemodiálise -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('ver-hd') }}</h2>
+              @if (doc.sessoes.length === 0) {
+                <p class="impl__vazio">Nenhuma sessão sincronizada.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>Data</th><th>Duração</th><th>Status</th><th>Peso pré</th><th>Peso pós</th><th>Kt/V</th><th>URR</th><th>Intercorrência</th></tr></thead>
+                  <tbody>
+                    @for (s of doc.sessoes; track s.idSessao) {
+                      <tr>
+                        <td>{{ dataHora(s.dataSessao) }}</td>
+                        <td>{{ s.duracaoMin != null ? s.duracaoMin + ' min' : '—' }}</td>
+                        <td>{{ s.statusSessao || '—' }}</td>
+                        <td>{{ s.pesoPre ?? '—' }}</td>
+                        <td>{{ s.pesoPos ?? '—' }}</td>
+                        <td>{{ s.ktv ?? '—' }}</td>
+                        <td>{{ s.urr ?? '—' }}</td>
+                        <td [class.impl__critico]="s.teveIntercorrencia">{{ s.teveIntercorrencia ? 'Sim' : 'Não' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- 15. Imagens (origem ainda não envia) -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('imagens') }}</h2>
+              <p class="impl__aviso">Seção não incluída nesta impressão — consulte a aba correspondente na ficha eletrônica.</p>
+            </section>
+
+            <!-- 16. Resumo: contadores + destaques -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('resumo') }}</h2>
+              @if (doc.resumo; as r) {
+                <table class="impl__pares">
+                  <tr><th>Total de evoluções</th><td>{{ r.totalEvolucoes }}</td></tr>
+                  <tr><th>Total de sessões</th><td>{{ r.totalSessoes }}</td></tr>
+                  <tr><th>Total de exames</th><td>{{ r.totalExames }}</td></tr>
+                  <tr>
+                    <th>Última sessão</th>
+                    <td>
+                      @if (r.ultimaSessao; as s) {
+                        {{ data(s.dataSessao) }} · pré {{ s.pesoPre ?? '—' }} / pós {{ s.pesoPos ?? '—' }} kg
+                      } @else { — }
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Prescrição vigente</th>
+                    <td>
+                      @if (r.prescricaoVigente; as p) {
+                        {{ p.tipo || '—' }} · {{ data(p.dataPrescricao) }} · {{ p.statusOrigem || '—' }}@if (p.prescritorNome) { · {{ p.prescritorNome }} }
+                      } @else { — }
+                    </td>
+                  </tr>
+                </table>
+
+                <h3>Alergias ativas ({{ r.alergias.length }})</h3>
+                @if (r.alergias.length === 0) {
+                  <p class="impl__vazio">Nenhuma alergia ativa.</p>
+                } @else {
+                  <table class="impl__grid">
+                    <thead><tr><th>Substância</th><th>Criticidade</th></tr></thead>
+                    <tbody>
+                      @for (a of r.alergias; track $index) {
+                        <tr>
+                          <td>{{ a.substancia || '—' }}</td>
+                          <td [class.impl__critico]="(a.criticidade || '').toLowerCase() === 'high' || (a.criticidade || '').toLowerCase() === 'alta'">{{ a.criticidade || '—' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+
+                <h3>Problemas ativos ({{ r.problemasAtivos.length }})</h3>
+                @if (r.problemasAtivos.length === 0) {
+                  <p class="impl__vazio">Nenhum problema ativo.</p>
+                } @else {
+                  <table class="impl__grid">
+                    <thead><tr><th>CID-10</th><th>Descrição</th><th>Principal</th></tr></thead>
+                    <tbody>
+                      @for (p of r.problemasAtivos; track $index) {
+                        <tr>
+                          <td>{{ p.cid10 || '—' }}</td>
+                          <td>{{ p.descricao || '—' }}</td>
+                          <td>{{ p.principal ? 'Sim' : 'Não' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              } @else {
+                <p class="impl__vazio">Resumo não disponível.</p>
+              }
+            </section>
+
+            <!-- 17. Linha do tempo -->
+            <section class="impl__secao">
+              <h2>{{ rotulo('linha-do-tempo') }}</h2>
+              @if (doc.timeline.length === 0) {
+                <p class="impl__vazio">Nenhum evento na linha do tempo.</p>
+              } @else {
+                <table class="impl__grid">
+                  <thead><tr><th>Data/hora</th><th>Tipo</th><th>Descrição</th><th>Autor</th></tr></thead>
+                  <tbody>
+                    @for (ev of doc.timeline; track ev.tipo + '-' + ev.idRegistro) {
+                      <tr>
+                        <td>{{ dataHora(ev.dataHora) }}</td>
+                        <td>{{ ev.tipo || '—' }}</td>
+                        <td>{{ ev.titulo || ev.resumo || '—' }}</td>
+                        <td>{{ ev.autor || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <footer class="impl__rodape">
+              Documento gerado a partir de dados do sistema de origem — somente leitura.
+              Acessos a este prontuário são registrados (LGPD). Emitido em {{ emissao | date: 'dd/MM/yyyy HH:mm' }}.
+            </footer>
+          </div>
+        }
+      </article>
+    }
+  }
+</div>

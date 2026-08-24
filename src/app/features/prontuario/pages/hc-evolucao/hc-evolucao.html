@@ -1,0 +1,194 @@
+@if (carregando()) {
+  <pr-skeleton [linhas]="8" altura="16px" />
+} @else if (erro()) {
+  <pr-estado-vazio icone="!" titulo="Não foi possível carregar" descricao="Erro ao consultar o sistema de origem." />
+} @else {
+  <div class="hc">
+    <!-- Coluna de datas -->
+    <aside class="hc__datas nx-group nao-imprime">
+      <div class="nx-group-head">Datas</div>
+      <ul class="hc__datas-lista">
+        @for (e of filtradas(); track e.idEvolucao) {
+          <li>
+            <button type="button" class="hc__data-item" [class.hc__data-item--cancelada]="e.cancelado" (click)="irPara(e)">
+              <span class="tabular">{{ (e.dataEvolucao | date: 'dd/MM/yyyy') || '—' }}</span>
+              <span class="hc__letra">{{ letra(e.tipo) }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    <!-- Conteúdo -->
+    <div class="hc__conteudo">
+      <div class="hc__barra nao-imprime">
+        <label class="hc__filtro">
+          <span>Somente:</span>
+          <select [(ngModel)]="tipoFiltro">
+            <option value="">Todos os tipos</option>
+            @for (t of tipos(); track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </label>
+
+        <label class="hc__check">
+          <input type="checkbox" [checked]="verCanceladas()" (change)="alternarCanceladas()" />
+          <span>Ver canceladas</span>
+        </label>
+
+        <span class="hc__barra-sep"></span>
+
+        @if (podeEscrever() && !novoAberto()) {
+          <button type="button" class="nx-btn nx-btn--primary" (click)="abrirNovo()">+ Nova evolução</button>
+        }
+        <button type="button" class="nx-btn" (click)="imprimir()">🖨 Imprimir</button>
+      </div>
+
+      <!-- Form: nova evolução -->
+      @if (podeEscrever() && novoAberto()) {
+        <section class="hc__form nx-group nao-imprime">
+          <header class="nx-group-head">Nova evolução</header>
+          <div class="nx-group-body hc__form-body">
+            <label class="hc__campo">
+              <span class="hc__campo-lbl">Tipo</span>
+              <select [(ngModel)]="novoTipo" [disabled]="salvando()">
+                <option value="" disabled>Selecione…</option>
+                @for (t of tiposEscrita; track t) { <option [value]="t">{{ t }}</option> }
+              </select>
+            </label>
+
+            <label class="hc__campo">
+              <span class="hc__campo-lbl">Especialidade <em>(opcional)</em></span>
+              <input type="text" [(ngModel)]="novoEspecialidade" [disabled]="salvando()" placeholder="Ex.: Nefrologia" />
+            </label>
+
+            <label class="hc__campo hc__campo--full">
+              <span class="hc__campo-lbl">
+                Texto
+                <span class="hc__contador" [class.hc__contador--ok]="novoTextoValido">
+                  {{ novoTexto.trim().length }} / mín. {{ TEXTO_MIN }}
+                </span>
+              </span>
+              <textarea rows="5" [(ngModel)]="novoTexto" [disabled]="salvando()" placeholder="Descreva a evolução clínica…"></textarea>
+            </label>
+
+            @if (erroSalvar()) {
+              <p class="hc__erro" role="alert">{{ erroSalvar() }}</p>
+            }
+
+            <div class="hc__form-acoes">
+              <button type="button" class="nx-btn nx-btn--primary" (click)="salvarNovo()" [disabled]="!novoValido || salvando()">
+                @if (salvando()) { <span class="hc__spinner" aria-hidden="true"></span> Salvando… } @else { Salvar }
+              </button>
+              <button type="button" class="nx-btn" (click)="cancelarNovo()" [disabled]="salvando()">Cancelar</button>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (evolucoes().length === 0) {
+        <pr-estado-vazio icone="&#128221;" titulo="Nenhuma evolução" descricao="Nenhuma evolução registrada para este paciente." />
+      }
+
+      @for (e of filtradas(); track e.idEvolucao) {
+        <article class="hc__evo nx-group" [class.hc__evo--cancelada]="e.cancelado" [id]="ancora(e)">
+          <header class="hc__evo-cab nx-group-head">
+            <span class="hc__evo-letra" [attr.title]="e.tipo || ''">{{ letra(e.tipo) }}</span>
+            <strong class="tabular">{{ (e.dataEvolucao | date: 'dd/MM/yyyy HH:mm') || '—' }}</strong>
+            <span class="hc__evo-meta">
+              {{ e.tipo || '—' }}
+              @if (e.profissionalNome) { — {{ e.profissionalNome }} }
+              @if (e.profissionalConselho) { ({{ e.profissionalConselho }}) }
+              @if (e.especialidade) { · {{ e.especialidade }} }
+            </span>
+
+            <!-- Chip de origem -->
+            @if (e.ehNativa) {
+              <span class="hc__chip hc__chip--nativa">Registrada aqui</span>
+            } @else {
+              <span class="hc__chip hc__chip--origem">Sistema de origem</span>
+            }
+            @if (e.idEvolucaoRetificada != null) {
+              <span class="hc__chip hc__chip--retif">Retificação de #{{ e.idEvolucaoRetificada }}</span>
+            }
+            @if (e.restrita) {
+              <span
+                class="hc__chip hc__chip--restrita"
+                title="Nota restrita — visível apenas para a equipe clínica"
+              >RESTRITA</span>
+            }
+          </header>
+
+          <!-- Tarja de cancelamento -->
+          @if (e.cancelado) {
+            <div class="hc__tarja">CANCELADA — {{ e.motivoCancelamento || 'sem motivo informado' }}</div>
+          }
+
+          <div class="hc__evo-texto nx-group-body">{{ e.texto || '—' }}</div>
+
+          <!-- Ações de escrita (nativa, não cancelada) -->
+          @if (podeAgir(e)) {
+            <div class="hc__evo-acoes nao-imprime">
+              @if (!acaoAberta(e, 'retificar') && !acaoAberta(e, 'cancelar')) {
+                <button type="button" class="nx-btn nx-btn--sm" (click)="abrirRetificar(e)">Retificar</button>
+                <button type="button" class="nx-btn nx-btn--sm nx-btn--danger" (click)="abrirCancelar(e)">Cancelar</button>
+              }
+
+              <!-- Form retificar -->
+              @if (acaoAberta(e, 'retificar')) {
+                <div class="hc__acao-form">
+                  <label class="hc__campo hc__campo--full">
+                    <span class="hc__campo-lbl">
+                      Texto retificado
+                      <span class="hc__contador" [class.hc__contador--ok]="acaoTextoValido">
+                        {{ acaoTexto.trim().length }} / mín. {{ TEXTO_MIN }}
+                      </span>
+                    </span>
+                    <textarea rows="4" [(ngModel)]="acaoTexto" [disabled]="processandoAcao()"></textarea>
+                  </label>
+                  <label class="hc__campo hc__campo--full">
+                    <span class="hc__campo-lbl">Motivo da retificação <em>(obrigatório)</em></span>
+                    <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está retificando?" />
+                  </label>
+                  @if (erroAcao()) { <p class="hc__erro" role="alert">{{ erroAcao() }}</p> }
+                  <div class="hc__form-acoes">
+                    <button type="button" class="nx-btn nx-btn--primary nx-btn--sm" (click)="confirmarRetificar(e)"
+                      [disabled]="!acaoTextoValido || !acaoMotivoValido || processandoAcao()">
+                      @if (processandoAcao()) { <span class="hc__spinner" aria-hidden="true"></span> Processando… } @else { Confirmar retificação }
+                    </button>
+                    <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                  </div>
+                </div>
+              }
+
+              <!-- Form cancelar -->
+              @if (acaoAberta(e, 'cancelar')) {
+                <div class="hc__acao-form">
+                  <label class="hc__campo hc__campo--full">
+                    <span class="hc__campo-lbl">Motivo do cancelamento <em>(obrigatório, mín. {{ MOTIVO_MIN }})</em></span>
+                    <input type="text" [(ngModel)]="acaoMotivo" [disabled]="processandoAcao()" placeholder="Por que está cancelando?" />
+                  </label>
+                  @if (erroAcao()) { <p class="hc__erro" role="alert">{{ erroAcao() }}</p> }
+                  <div class="hc__form-acoes">
+                    <button type="button" class="nx-btn nx-btn--danger nx-btn--sm" (click)="confirmarCancelar(e)"
+                      [disabled]="!acaoMotivoValido || processandoAcao()">
+                      @if (processandoAcao()) { <span class="hc__spinner" aria-hidden="true"></span> Processando… } @else { Confirmar cancelamento }
+                    </button>
+                    <button type="button" class="nx-btn nx-btn--sm" (click)="fecharAcao()" [disabled]="processandoAcao()">Fechar</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </article>
+      }
+
+      @if (temMais()) {
+        <div class="hc__mais nao-imprime">
+          <button type="button" class="nx-btn" (click)="carregarMais()" [disabled]="carregandoMais()">
+            {{ carregandoMais() ? 'Carregando…' : 'Carregar mais' }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}
