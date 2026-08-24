@@ -168,7 +168,7 @@ export class UsuarioService {
     return this.http.put<any>(`${this.apiUrl}/usuarios/${id}`, {
       NOME_USER: usuario.nomeUser,
       ACESSO: usuario.acesso,
-      PWD: usuario.senha,
+      ...(usuario.senha ? { PWD: usuario.senha } : {}),
       EMAIL: usuario.email,
       ROLE: usuario.role,
       ID_UNIDADE: usuario.idUnidade || null,
